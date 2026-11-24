@@ -180,8 +180,6 @@ currently out of line. An entry leaves when the code meets the contract again.
 * A silent triangle renders the middle of its wave, where the console holds the step it stopped on. A
   faithful hold needs a DC-blocking output stage at every mix (the reconstruction's render, the sequencer
   and the song render), since nothing drains a held level today.
-* The spectral weights read each bin at its upper edge, half a bin above its center, under every spectrum
-  method (`calculate_weights_from_edges`). Reading each bin at its center closes it.
 * With a stem's pulses driven unlike, the joint search sounds a single pulse proposal on the first pulse
   and a pair in proposal order alone, which covers every choice only where the pulses are
   interchangeable, so a note the second pulse's drive matches goes unsearched

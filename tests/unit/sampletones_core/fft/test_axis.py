@@ -13,10 +13,14 @@ from sampletones_core.constants.spectrum import BINS_PER_OCTAVE, CQT_CUTOFF_FREQ
 from sampletones_core.fft import (
     FFTTransformer,
     Window,
+    calculate_cqt_frequencies,
     calculate_fft_bin_edges,
+    calculate_fft_frequencies,
     calculate_weights_from_edges,
+    convert_midpoints_to_edges,
 )
 from sampletones_core.fft.features import get_feature_extractor
+from sampletones_core.fft.fft import calculate_bin_centers
 from sampletones_core.fft.spectrum.fft import calculate_fft_spectrum, calculate_log_spaced_fft_spectrum
 from sampletones_core.fft.spectrum.spectrum import calculate_spectrum
 from tests.suite.base import BaseTestSuite
@@ -25,6 +29,8 @@ from tests.suite.case import BaseRegularTestCase
 FFT_SAMPLE_RATE: Final[int] = 44100
 TONE_BIN: Final[int] = 37
 TONE_SHARE_TOLERANCE: Final[float] = 1e-6
+CENTS_PER_OCTAVE: Final[float] = 1200.0
+CQT_OCTAVES: Final[int] = 9
 
 
 def _config(method: SpectrumMethod) -> Config:
@@ -167,6 +173,33 @@ class TestALowToneKeepsToOneLogBin(BaseTestSuite):
         lower, upper = float(spectrum.edges[peak]), float(spectrum.edges[peak + 1])
         assert values[peak] / values.sum() == pytest.approx(1.0, abs=TONE_SHARE_TOLERANCE)
         assert (lower + upper) / 2.0 == pytest.approx(frequency)
+
+
+class TestBinCenters:
+    """A bin's center stands halfway between its edges: on the frequency an FFT bin holds, and under a
+    cent above a constant-Q bin's frequency."""
+
+    def test_an_odd_size_s_fft_bins_center_on_their_frequencies(self) -> None:
+        size = 1023
+        centers = calculate_bin_centers(calculate_fft_bin_edges(size, FFT_SAMPLE_RATE))
+
+        assert centers == pytest.approx(calculate_fft_frequencies(size, FFT_SAMPLE_RATE)[1:])
+
+    def test_an_even_size_s_nyquist_bin_centers_a_quarter_bin_below_its_frequency(self) -> None:
+        size = 1024
+        resolution = FFT_SAMPLE_RATE / size
+        centers = calculate_bin_centers(calculate_fft_bin_edges(size, FFT_SAMPLE_RATE))
+        frequencies = calculate_fft_frequencies(size, FFT_SAMPLE_RATE)[1:]
+
+        assert centers[:-1] == pytest.approx(frequencies[:-1])
+        assert float(centers[-1]) == pytest.approx(float(frequencies[-1]) - resolution / 4)
+
+    def test_a_constant_q_bin_centers_under_a_cent_above_its_frequency(self) -> None:
+        frequencies = calculate_cqt_frequencies(CQT_OCTAVES * BINS_PER_OCTAVE, CQT_CUTOFF_FREQUENCY, BINS_PER_OCTAVE)
+        centers = calculate_bin_centers(convert_midpoints_to_edges(frequencies))
+
+        cents = CENTS_PER_OCTAVE * np.log2(centers / frequencies)
+        assert bool(np.all((cents > 0.0) & (cents < 1.0)))
 
 
 class TestEdgeWeights:

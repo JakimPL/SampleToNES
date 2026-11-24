@@ -6,7 +6,7 @@ import numpy as np
 
 from sampletones_core.configs import InstructionsLibraryConfig
 from sampletones_core.constants.enums import SpectrumMethod
-from sampletones_core.fft.fft import calculate_weights_from_edges
+from sampletones_core.fft.fft import calculate_bin_centers, calculate_weights_from_edges
 from sampletones_core.fft.spectrum.cqt import calculate_cqt_spectrum_columns
 from sampletones_core.fft.spectrum.fft import (
     calculate_fft_spectrum,
@@ -48,8 +48,7 @@ def bin_center_frequencies(spectrum: Histogram) -> np.ndarray:
     Returns:
         Bin center frequencies in Hz, one per bin.
     """
-    edges = np.asarray(spectrum.edges, dtype=np.float64)
-    return (edges[:-1] + edges[1:]) / 2.0
+    return calculate_bin_centers(np.asarray(spectrum.edges, dtype=np.float64))
 
 
 def bin_value_at(spectrum: Histogram, frequency: float) -> float:
@@ -112,8 +111,9 @@ def octave_weight_shares(
     Returns:
         One weight share per band, in band order.
     """
-    weights = calculate_weights_from_edges(np.asarray(edges, dtype=np.float64), perceptual_exponent)
-    centers = (np.asarray(edges[:-1], dtype=np.float64) + np.asarray(edges[1:], dtype=np.float64)) / 2.0
+    edges = np.asarray(edges, dtype=np.float64)
+    weights = calculate_weights_from_edges(edges, perceptual_exponent)
+    centers = calculate_bin_centers(edges)
     return [float(np.sum(weights[(centers >= lower) & (centers < upper)])) for lower, upper in bands]
 
 

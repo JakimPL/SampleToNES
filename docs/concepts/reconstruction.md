@@ -206,8 +206,8 @@ cost = α · spectral + β · temporal
   level, which keeps a silent frame's score finite.
 
   Bins are weighted by their span in auditory critical bands (the ERB scale) times the K-weighting
-  loudness curve (ITU-R BS.1770). Each bin then counts in proportion to the hearing resolution and
-  loudness contribution it represents.
+  loudness curve (ITU-R BS.1770) read at each bin's center. Each bin then counts in proportion to the
+  hearing resolution and loudness contribution it represents.
 - **temporal** measures the target *waveform* against what the frame's channels are expected to render. It
   is normalized by the target frame's own level, so the spectral/temporal blend holds across frame
   loudness. A candidate whose frames repeat one waveform shape (a note, or noise whose register cycle fits
