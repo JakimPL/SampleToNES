@@ -98,10 +98,10 @@ sharper frequency resolution requires a longer time window, and vice versa):
 - **log-FFT** takes the same FFT and *re-bins* its linear bins onto a logarithmic
   (musical) axis whose bin widths are floored at the FFT's `Δf`: the axis is linear
   where a musical interval falls below the resolution (roughly under 500 Hz at the
-  defaults) and logarithmic above. Low tones therefore stay compact and every log
-  bin aggregates whole FFT bins — the resolution is still the FFT's `Δf`, presented
-  on a perceptual axis. Like the FFT it keeps a short window, so it localizes events
-  sharply in time.
+  defaults) and logarithmic above. Its linear bins are the FFT's own, so low tones
+  stay compact, and each logarithmic bin spans more than one FFT bin — the resolution
+  is still the FFT's `Δf`, presented on a perceptual axis. Like the FFT it keeps a
+  short window, so it localizes events sharply in time.
 - **CQT** (constant-Q transform) places bins geometrically and gives
   every musical interval the same number of bins, so it resolves low pitches finely.
   It is the default. Its lowest bin sits at the lowest note the chip sounds: the

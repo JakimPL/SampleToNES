@@ -1,5 +1,5 @@
 from functools import lru_cache
-from typing import Tuple
+from typing import Final, List, Tuple
 
 import numpy as np
 
@@ -8,6 +8,8 @@ from sampletones_core.constants.spectrum import (
     CQT_CUTOFF_FREQUENCY,
 )
 from sampletones_shared.types.array import Array, ArrayClasses, get_array_module
+
+CACHED_LOGARITHMIC_REGIONS: Final[int] = 128
 
 
 def calculate_n_bins(
@@ -45,45 +47,33 @@ def calculate_n_bins(
     return n_bins
 
 
-@lru_cache(maxsize=128)
-def _resolution_floored_edges(
-    maximum: float,
-    cutoff: float,
-    bins_per_octave: int,
-    resolution: float,
-) -> Tuple[float, ...]:
-    ratio = 2.0 ** (1.0 / bins_per_octave)
-    edges = [cutoff]
-    while edges[-1] < maximum:
-        edges.append(min(maximum, max(edges[-1] * ratio, edges[-1] + resolution)))
-
-    return tuple(edges)
-
-
 def to_resolution_floored_log_bands(
     bands: Array,
     cutoff: float,
     bins_per_octave: int = BINS_PER_OCTAVE,
 ) -> Array:
     """
-    Generate logarithmically-spaced band edges whose widths respect the source resolution.
+    Band edges on a logarithmic axis floored at the source resolution.
 
-    Edges advance from the cutoff frequency by a factor of `2 ** (1 / bins_per_octave)`
-    or by the source band spacing, whichever is larger, up to the maximum frequency of
-    the input bands. Every band therefore spans at least one source band: rebinned
-    values aggregate whole source bands, adjacent bands stay statistically
-    independent, and a tone narrower than the band spacing lands compactly at every
-    frequency. The axis is linear at the low end and transitions to the logarithmic
-    spacing where the musical interval outgrows the source resolution.
+    The axis turns from the source's own grid to a musical one at the first source edge where a
+    logarithmic step of `2 ** (1 / bins_per_octave)` outgrows the source band above it:
+
+    - In the floored region below that edge, the edges are the source edges themselves, from the
+      source edge at or below the cutoff. Every band there is one whole source band, so the rebinned
+      values there are the source bands' own: what one source band holds stays in one band.
+    - In the logarithmic region, the edges step by that factor from the turning edge up to the top
+      source edge. Every step there is wider than a source band, and the rebin shares a source band
+      an edge cuts between the two bands it borders, by overlap.
 
     Args:
-        bands: Original uniformly-spaced frequency band edges.
-        cutoff: Cutoff frequency. The first generated edge.
+        bands: Source band edges, strictly increasing.
+        cutoff: The lowest frequency the axis holds. The axis starts at the source edge at or below
+            it, or at the lowest source edge when the cutoff lies below it.
         bins_per_octave: Number of bands per octave in the logarithmic region.
 
     Returns:
-        Array of strictly increasing frequency edges from the cutoff to the maximum
-        band frequency.
+        Strictly increasing band edges, in the source's dtype, from the source edge at or below the
+        cutoff to the top source edge.
 
     Raises:
         TypeError: If bands is not an Array.
@@ -108,6 +98,42 @@ def to_resolution_floored_log_bands(
         raise ValueError("cutoff frequency must be less than the maximum band frequency")
 
     module = get_array_module(bands)
-    resolution = float(bands[1] - bands[0])
-    edges = _resolution_floored_edges(float(bands[-1]), float(cutoff), bins_per_octave, resolution)
-    return module.asarray(edges, dtype=bands.dtype)
+    ratio = 2.0 ** (1.0 / bins_per_octave)
+    floored = _floored_edges(bands, cutoff, ratio)
+    logarithmic = _logarithmic_edges(float(floored[-1]), float(bands[-1]), ratio)
+    return module.concatenate([floored, module.asarray(logarithmic, dtype=bands.dtype)])
+
+
+def _floored_edges(bands: Array, cutoff: float, ratio: float) -> Array:
+    """
+    The source edges of the floored region, read from ``bands`` itself.
+
+    They run from the source edge at or below the cutoff to the turning edge, the first whose
+    logarithmic step ``ratio`` outgrows the source band above it, or to the top source edge where
+    no step outgrows its band.
+    """
+    module = get_array_module(bands)
+    first = max(int(module.searchsorted(bands, cutoff, side="right")) - 1, 0)
+    turning = first
+    while turning + 1 < bands.size and float(bands[turning]) * ratio <= float(bands[turning + 1]):
+        turning += 1
+
+    floored: Array = bands[first : turning + 1]
+    return floored
+
+
+@lru_cache(maxsize=CACHED_LOGARITHMIC_REGIONS)
+def _logarithmic_edges(start: float, maximum: float, ratio: float) -> Tuple[float, ...]:
+    """
+    The edges of the logarithmic region above its first edge ``start``.
+
+    Each edge stands a factor of ``ratio`` above the one before, and the last one at ``maximum``.
+    The region is empty where ``start`` is the maximum already.
+    """
+    edges: List[float] = []
+    edge = start
+    while edge < maximum:
+        edge = min(maximum, edge * ratio)
+        edges.append(edge)
+
+    return tuple(edges)

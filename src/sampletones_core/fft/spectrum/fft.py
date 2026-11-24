@@ -55,17 +55,18 @@ def calculate_log_spaced_fft_spectrum(
     """
     Calculate the power spectrum with logarithmically-spaced frequency bins.
 
-    Computes the linear FFT spectrum and rebins it onto a logarithmic axis whose
-    bin widths respect the FFT resolution: bins widen to the linear spacing where
-    a musical interval falls below it, so low tones stay compact and adjacent bins
-    aggregate independent FFT measurements at every frequency. The axis starts at the
-    pulse's lowest note, the lowest frequency the FFT window spans two cycles of.
+    Computes the linear FFT spectrum and rebins it onto a logarithmic axis floored at
+    the FFT resolution. Up to where a musical interval outgrows an FFT bin, the log bins
+    are the FFT bins themselves, so a low tone keeps the compact reading the FFT gives it.
+    Above, each log bin spans more than an FFT bin, on a musical axis. The axis starts
+    with the FFT bin that holds the pulse's lowest note, the lowest frequency the FFT
+    window spans two cycles of.
 
     Args:
         audio: Input audio as array.
         sample_rate: Sampling rate in Hz.
         fft_size: FFT size. If None, uses the length of the audio array.
-        cutoff: Cutoff frequency.
+        cutoff: The lowest frequency the axis holds.
         bins_per_octave: Number of bins per octave in the logarithmic region.
 
     Returns:

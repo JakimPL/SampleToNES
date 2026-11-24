@@ -20,8 +20,8 @@ def calculate_spectrum(
 ) -> Histogram:
     """
     Compute the spectrum of the given audio data, for given FFT size and sample rate,
-    depending on the selected spectrum calculation method. Each method starts its axis at its
-    own floor: the constant-Q transform at the triangle's lowest note, and the log-spaced FFT at
+    depending on the selected spectrum calculation method. Each method's lowest bin holds its own
+    floor: the triangle's lowest note under the constant-Q transform, and under the log-spaced FFT
     the lowest frequency its window spans two cycles of.
 
     Args:
