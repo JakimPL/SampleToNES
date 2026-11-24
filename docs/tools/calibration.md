@@ -279,7 +279,10 @@ single recording leaves out `stems` and is converted over the run's channels.
 
 **NES-MDB pieces** come from [NES-MDB](https://github.com/chrisdonahue/nesmdb), a collection of NES game music
 transcribed from what the console's sound chip played. Download its MIDI archive yourself; the pieces
-are read straight out of it.
+are read straight out of it. [pretty_midi](https://github.com/craffel/pretty-midi), the library NES-MDB
+was written with, reads them. A copy of the source code set up for development has it. An installed copy
+needs the `calibration` dependency group for a run with pieces. See
+[dependencies](../development/release/dependencies.md#calibration).
 
 ```yaml
 items:

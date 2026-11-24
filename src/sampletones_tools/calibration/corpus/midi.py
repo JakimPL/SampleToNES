@@ -1,34 +1,28 @@
-from dataclasses import dataclass, field
-from typing import Dict, Final, List, Optional, Self, Tuple
+from __future__ import annotations
 
-HEADER_CHUNK: Final[bytes] = b"MThd"
-TRACK_CHUNK: Final[bytes] = b"MTrk"
-CHUNK_TYPE_BYTES: Final[int] = 4
-CHUNK_PREFIX_BYTES: Final[int] = 8
-DIVISION_START: Final[int] = 12
-DIVISION_END: Final[int] = 14
-META_EVENT: Final[int] = 0xFF
-SYSEX_EVENTS: Final[Tuple[int, int]] = (0xF0, 0xF7)
-TRACK_NAME: Final[int] = 0x03
-SET_TEMPO: Final[int] = 0x51
-NOTE_OFF: Final[int] = 0x80
-NOTE_ON: Final[int] = 0x90
-NOTE_EVENTS: Final[Tuple[int, int]] = (NOTE_OFF, NOTE_ON)
-CONTROL_CHANGE: Final[int] = 0xB0
-ONE_BYTE_MESSAGES: Final[Tuple[int, int]] = (0xC0, 0xD0)
-STATUS_BIT: Final[int] = 0x80
-MESSAGE_KIND_MASK: Final[int] = 0xF0
-CONTINUATION_BIT: Final[int] = 0x80
-SEVEN_BITS: Final[int] = 0x7F
-BITS_PER_GROUP: Final[int] = 7
-SMPTE_BIT: Final[int] = 0x8000
-DEFAULT_TEMPO: Final[int] = 500_000
-MICROSECONDS: Final[float] = 1e6
-TRACK_NAME_ENCODING: Final[str] = "latin-1"
+from dataclasses import dataclass
+from io import BytesIO
+from typing import TYPE_CHECKING, Dict, Final, List, Tuple, Type
+
+if TYPE_CHECKING:
+    from pretty_midi import ControlChange, Instrument
+    from pretty_midi import Note as PrettyMidiNote
+    from pretty_midi import PrettyMIDI
+
+MALFORMED_FILE_ERRORS: Final[Tuple[Type[Exception], ...]] = (
+    EOFError,
+    IndexError,
+    OSError,
+    ValueError,
+    ZeroDivisionError,
+)
+LONGEST_FILE_TICKS: Final[int] = 100_000_000
+
+Controllers = Dict[int, List[Tuple[float, int]]]
 
 
 class MidiFormatError(ValueError):
-    """Raised when bytes hold no standard MIDI file this reader takes."""
+    """Raised when bytes hold no standard MIDI file pretty_midi reads."""
 
 
 @dataclass(frozen=True)
@@ -48,239 +42,104 @@ class Note:
     velocity: int
 
 
-@dataclass
+@dataclass(frozen=True)
 class Track:
-    """What one named track plays: its notes, and each controller's values over time, in seconds."""
-
-    notes: List[Note] = field(default_factory=list)
-    controllers: Dict[int, List[Tuple[float, int]]] = field(default_factory=dict)
-
-
-@dataclass(frozen=True)
-class Event:
-    """A channel message at the tick it falls on: its kind with the channel masked off, and its two data bytes."""
-
-    tick: int
-    status: int
-    first: int
-    second: int
-
-
-@dataclass(frozen=True)
-class TempoSpan:
-    """A stretch of the piece at one tempo, from the tick a tempo is set at.
+    """What one named track plays, in seconds.
 
     Attributes:
-        tick: The tick the stretch starts at.
-        seconds: The time in seconds at that tick.
-        microseconds_per_tick: How long each tick of the stretch lasts.
+        notes: Its notes, ordered by their start.
+        controllers: Each controller's values by its number, each beside the time it is set, in order.
     """
 
-    tick: int
-    seconds: float
-    microseconds_per_tick: float
-
-
-class TempoMap:
-    """The piece's clock: the time in seconds at every tick, through each tempo the piece sets.
-
-    The piece plays at the MIDI default tempo until its first tempo change. Every tempo set in any
-    track holds for the whole piece, as a file of tracks playing together keeps one tempo map. The
-    tempos are ordered by the tick they are set at, and tempos set at one tick keep the order the file
-    gives them, so the last of them holds from that tick on.
-    """
-
-    def __init__(self, tempos: List[Tuple[int, int]], division: int) -> None:
-        spans = [TempoSpan(tick=0, seconds=0.0, microseconds_per_tick=DEFAULT_TEMPO / division)]
-        for tick, tempo in sorted(tempos, key=_tempo_tick):
-            last = spans[-1]
-            seconds = last.seconds + (tick - last.tick) * last.microseconds_per_tick / MICROSECONDS
-            spans.append(TempoSpan(tick=tick, seconds=seconds, microseconds_per_tick=tempo / division))
-
-        self._spans = spans
-
-    def seconds_at(self, tick: int) -> float:
-        """The time in seconds at ``tick``, from the last tempo set by then."""
-        span = next(span for span in reversed(self._spans) if span.tick <= tick)
-        return span.seconds + (tick - span.tick) * span.microseconds_per_tick / MICROSECONDS
-
-
-class TrackReader:
-    """Reads one track chunk: its name, its channel messages and the tempos it sets, in order.
-
-    A channel message may leave out its status byte where it repeats the one before (running status),
-    so the reader keeps the last status between messages. Meta events give the track's name and the
-    tempo, and system-exclusive events are skipped.
-
-    Attributes:
-        name: The track's name, as its name event gives it, empty before one.
-        events: Its channel messages of two data bytes, in order.
-        tempos: Each tempo it sets, as the tick beside the microseconds per beat.
-    """
-
-    def __init__(self, data: bytes) -> None:
-        self.name = ""
-        self.events: List[Event] = []
-        self.tempos: List[Tuple[int, int]] = []
-        self._data = data
-        self._position = 0
-        self._tick = 0
-        self._status = 0
-
-    def read(self) -> Self:
-        """Reads every event of the chunk."""
-        while self._position < len(self._data):
-            delta, self._position = _variable_length(self._data, self._position)
-            self._tick += delta
-            byte = self._data[self._position]
-            if byte == META_EVENT:
-                self._read_meta()
-            elif byte in SYSEX_EVENTS:
-                self._skip_sysex()
-            else:
-                self._read_channel_message(byte)
-
-        return self
-
-    def _read_meta(self) -> None:
-        """A meta event: its kind, then its length and payload; the name and the tempo are kept."""
-        kind = self._data[self._position + 1]
-        size, self._position = _variable_length(self._data, self._position + 2)
-        payload = self._data[self._position : self._position + size]
-        self._position += size
-        if kind == TRACK_NAME:
-            self.name = payload.decode(TRACK_NAME_ENCODING)
-        elif kind == SET_TEMPO:
-            self.tempos.append((self._tick, int.from_bytes(payload, "big")))
-
-    def _skip_sysex(self) -> None:
-        """A system-exclusive event: its length, then a payload left unread."""
-        size, self._position = _variable_length(self._data, self._position + 1)
-        self._position += size
-
-    def _read_channel_message(self, byte: int) -> None:
-        """A channel message under its own status byte, or, under running status, under the last one."""
-        if byte & STATUS_BIT:
-            self._status = byte
-            self._position += 1
-
-        if self._status & MESSAGE_KIND_MASK in ONE_BYTE_MESSAGES:
-            self._position += 1
-            return
-
-        self.events.append(
-            Event(
-                tick=self._tick,
-                status=self._status & MESSAGE_KIND_MASK,
-                first=self._data[self._position],
-                second=self._data[self._position + 1],
-            )
-        )
-        self._position += 2
+    notes: List[Note]
+    controllers: Controllers
 
 
 def read_midi(data: bytes) -> Dict[str, Track]:
-    """The named tracks of a standard MIDI file, with every time in seconds through its tempo map.
+    """The named tracks of a standard MIDI file, as pretty_midi reads them, with every time in seconds.
 
-    The header chunk holds the time division at bytes 12 and 13, and the track chunks follow it, each
-    a type and a length before its events.
+    pretty_midi times every track through the tempo map the file's first track sets, at 120 beats a
+    minute until its first tempo. Where tempos share a tick, the last the file sets holds. A release
+    ends every note of its pitch struck at an earlier tick, so a note struck again while it sounds
+    plays twice, both strikes lasting to the release. A note struck at the tick of a release that
+    ends an earlier note of its pitch starts there. A note released at the tick it is struck, or
+    never released, is left out.
+
+    pretty_midi gives an instrument for each program and channel a track plays, named after the
+    track, and the reader gathers them back into the track. A file spanning more than
+    ``LONGEST_FILE_TICKS`` ticks is refused.
 
     Args:
         data: The file's bytes.
 
     Returns:
-        Dict[str, Track]: Each track by the name its name event gives, in file order.
+        Dict[str, Track]: Each track that plays a note, by the name its name event gives, in file order.
 
     Raises:
-        MidiFormatError: If the bytes hold no MIDI header, or time in SMPTE frames.
+        MidiFormatError: If pretty_midi reads no MIDI file in the bytes, or the file spans more ticks than the limit.
     """
-    if data[:CHUNK_TYPE_BYTES] != HEADER_CHUNK:
-        raise MidiFormatError("The data holds no MIDI header")
-
-    division = int.from_bytes(data[DIVISION_START:DIVISION_END], "big")
-    if division & SMPTE_BIT:
-        raise MidiFormatError("The file counts time in SMPTE frames, and this reader counts beats")
-
-    readers = [TrackReader(chunk).read() for chunk in _track_chunks(data)]
-    clock = TempoMap([tempo for reader in readers for tempo in reader.tempos], division)
-    return {reader.name: _track(reader.events, clock) for reader in readers}
+    midi = _parsed(data)
+    names = dict.fromkeys(instrument.name for instrument in midi.instruments)
+    return {name: _track([item for item in midi.instruments if item.name == name]) for name in names}
 
 
-def _track_chunks(data: bytes) -> List[bytes]:
-    """The body of every track chunk after the header chunk, in file order."""
-    position = CHUNK_PREFIX_BYTES + _chunk_length(data, 0)
-    chunks: List[bytes] = []
-    while data[position : position + CHUNK_TYPE_BYTES] == TRACK_CHUNK:
-        length = _chunk_length(data, position)
-        chunks.append(data[position + CHUNK_PREFIX_BYTES : position + CHUNK_PREFIX_BYTES + length])
-        position += CHUNK_PREFIX_BYTES + length
+def _parsed(data: bytes) -> PrettyMIDI:
+    """The file pretty_midi reads from ``data``.
 
-    return chunks
+    pretty_midi and mido come with the development and ``calibration`` dependency groups, which an
+    installed copy leaves to its owner, and that copy's calibration command imports this module on
+    every run, so both are imported here, where a file is read.
 
+    pretty_midi keeps the time of every tick a file spans, and refuses a file spanning more ticks
+    than its module-level ``MAX_TICK`` as likely corrupt. Its own limit of ten million ticks holds
+    under four minutes at the 44,100 ticks a second NES-MDB counts, and the longest piece of
+    NES-MDB spans about 67 million. The reader sets the limit to ``LONGEST_FILE_TICKS``, which
+    reads every piece of NES-MDB and keeps the clock of a file at the limit to 800 MB.
 
-def _tempo_tick(tempo: Tuple[int, int]) -> int:
-    """The tick a tempo is set at, which orders the tempo map."""
-    tick, _ = tempo
-    return tick
+    mido, which pretty_midi parses the file with, raises a ``KeySignatureError`` of its own on a key
+    signature naming no key, and the reader refuses it with the other failures of a malformed file.
 
-
-def _chunk_length(data: bytes, position: int) -> int:
-    """The length of the chunk starting at ``position``, which follows its type."""
-    return int.from_bytes(data[position + CHUNK_TYPE_BYTES : position + CHUNK_PREFIX_BYTES], "big")
-
-
-def _variable_length(data: bytes, position: int) -> Tuple[int, int]:
-    """The variable-length quantity at ``position``, and the position after it.
-
-    Each byte gives seven bits of the value, most significant first, and every byte but the last
-    sets its continuation bit.
+    Raises:
+        MidiFormatError: If pretty_midi reads no MIDI file in the bytes, or the file spans more ticks than the limit.
     """
-    value = 0
-    while True:
-        byte = data[position]
-        position += 1
-        value = (value << BITS_PER_GROUP) | (byte & SEVEN_BITS)
-        if not byte & CONTINUATION_BIT:
-            return value, position
+    import mido
+    import pretty_midi
+
+    pretty_midi.pretty_midi.MAX_TICK = LONGEST_FILE_TICKS
+    try:
+        midi = pretty_midi.PrettyMIDI(BytesIO(data))
+    except (*MALFORMED_FILE_ERRORS, mido.KeySignatureError) as error:
+        raise MidiFormatError(f"pretty_midi reads no MIDI file in the data: {error}") from error
+
+    return midi
 
 
-def _track(events: List[Event], clock: TempoMap) -> Track:
-    """The notes and controller values ``events`` play, in seconds.
+def _track(instruments: List[Instrument]) -> Track:
+    """The notes and controller values of one track's instruments, each kept once and ordered by time.
 
-    Every note event ends the note sounding at its pitch: a note off, a note on of velocity zero, and
-    a note on striking the pitch again, which then starts the new note. A note struck again while it
-    sounds therefore plays twice, the first time up to the new strike.
+    pretty_midi hands the control changes a track sets before its first note to every instrument
+    the track makes afterwards, as one shared list, so the reader keeps each change once, by its
+    identity.
     """
-    track = Track()
-    open_notes: Dict[int, Tuple[float, int]] = {}
-    for event in events:
-        time = clock.seconds_at(event.tick)
-        if event.status in NOTE_EVENTS:
-            closed = _closed(open_notes, event.first, time)
-            if closed is not None:
-                track.notes.append(closed)
+    notes = [_note(note) for instrument in instruments for note in instrument.notes]
+    changes = dict.fromkeys(change for instrument in instruments for change in instrument.control_changes)
+    controllers: Controllers = {}
+    for change in sorted(changes, key=_change_time):
+        controllers.setdefault(int(change.number), []).append((float(change.time), int(change.value)))
 
-            if event.status == NOTE_ON and event.second > 0:
-                open_notes[event.first] = (time, event.second)
-        elif event.status == CONTROL_CHANGE:
-            track.controllers.setdefault(event.first, []).append((time, event.second))
-
-    track.notes.sort(key=lambda note: note.start)
-    return track
+    return Track(notes=sorted(notes, key=_note_start), controllers=controllers)
 
 
-def _closed(open_notes: Dict[int, Tuple[float, int]], pitch: int, time: float) -> Optional[Note]:
-    """The note open at ``pitch``, taken out of ``open_notes`` and ended at ``time``.
+def _note(note: PrettyMidiNote) -> Note:
+    """One of pretty_midi's notes, its times as plain seconds."""
+    return Note(start=float(note.start), end=float(note.end), pitch=int(note.pitch), velocity=int(note.velocity))
 
-    Returns ``None`` where no note is open at ``pitch``, or where the note would end where it starts,
-    since a note lasting no time plays nothing.
-    """
-    opened = open_notes.pop(pitch, None)
-    if opened is None:
-        return None
 
-    start, velocity = opened
-    if time <= start:
-        return None
+def _note_start(note: Note) -> float:
+    """When a note starts, which orders a track's notes."""
+    return note.start
 
-    return Note(start=start, end=time, pitch=pitch, velocity=velocity)
+
+def _change_time(change: ControlChange) -> float:
+    """When a control change is set, which orders a track's controller values."""
+    return float(change.time)

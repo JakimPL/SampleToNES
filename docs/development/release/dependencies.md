@@ -62,7 +62,7 @@ Every wheel build writes the HTML documentation ([assets](../assets.md#documenta
 
 ## Calibration
 
-The calibration harness scores renders with referees of its own, built on `numpy` and `scipy`. The `calibration` dependency group adds [Zimtohrli](https://github.com/google/zimtohrli), a psychoacoustic model, as a second opinion. PyPI has its wheels for Windows, Intel macOS and x86-64 Linux, and other systems compile it on install. The group stays out of `dev`. `uv sync --group calibration`, with the extras the environment already uses named beside it, installs it. See [Calibration](../../tools/calibration.md).
+The calibration harness scores renders with referees of its own, built on `numpy` and `scipy`. The `calibration` dependency group adds [Zimtohrli](https://github.com/google/zimtohrli), a psychoacoustic model, as a second opinion. PyPI has its wheels for Windows, Intel macOS and x86-64 Linux, and other systems compile it on install. The group also adds [pretty_midi](https://github.com/craffel/pretty-midi) and the `mido` parser beneath it, which read the NES-MDB pieces a corpus manifest names. NES-MDB was written with it, so the pieces read the way their tools wrote them. The group stays out of `dev`. `dev` names pretty_midi and mido itself, so the cases that read MIDI files run wherever the suite does, while Zimtohrli, which joins the referees wherever it is importable, stays out of development runs. `uv sync --group calibration`, with the extras the environment already uses named beside it, installs it. See [Calibration](../../tools/calibration.md).
 
 ## NES player driver
 

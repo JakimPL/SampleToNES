@@ -19,6 +19,7 @@ TIMBRE_CONTROLLER: Final[int] = 12
 TRIANGLE_OCTAVE: Final[int] = 12
 SHORT_MODE: Final[int] = 1
 INITIAL_DUTY_CYCLE: Final[int] = 2
+UNPLAYED_TRACK: Final[Track] = Track(notes=[], controllers={})
 
 Events = List[Tuple[float, int]]
 
@@ -32,7 +33,8 @@ def nesmdb_frames(
 ) -> Dict[ChannelName, List[InstructionUnion]]:
     """The frames an NES-MDB piece plays over a window, each read at its middle.
 
-    NES-MDB writes each channel as a named track, and a track of another name is left out. A note's
+    NES-MDB writes each of the four NES voices as a named track, and a track of another name is left
+    out. Every voice gets a line, silent throughout where the file plays no note for it. A note's
     velocity is the volume it starts at, controller 11 moves the volume while it sounds, and
     controller 12 sets the pulse's duty cycle or the noise channel's mode. The triangle's note names
     the pitch it sounds, an octave below the note it is played on, and the noise channel's note counts
@@ -45,19 +47,16 @@ def nesmdb_frames(
         rate: The frames per second.
 
     Returns:
-        Dict[ChannelName, List[InstructionUnion]]: One instruction per frame for each channel the piece writes.
+        Dict[ChannelName, List[InstructionUnion]]: One instruction per frame for each NES voice, in voice order.
 
     Raises:
         ValidationError: If a note lies outside the range its channel's instruction takes.
     """
     times: List[float] = frame_middles(start_frame, frames, rate).tolist()
-    streams: Dict[ChannelName, List[InstructionUnion]] = {}
-    for name, track in tracks.items():
-        channel = VOICE_CHANNELS.get(name)
-        if channel is not None:
-            streams[channel] = [_frame(channel, track, time) for time in times]
-
-    return streams
+    return {
+        channel: [_frame(channel, tracks.get(name, UNPLAYED_TRACK), time) for time in times]
+        for name, channel in VOICE_CHANNELS.items()
+    }
 
 
 def _frame(channel: ChannelName, track: Track, time: float) -> InstructionUnion:

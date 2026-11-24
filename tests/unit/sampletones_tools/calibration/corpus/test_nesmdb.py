@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Dict, Final, List
+from typing import Dict, Final, List, Tuple
 
 import pytest
 
@@ -7,11 +7,11 @@ from sampletones_core.constants.enums import ChannelName
 from sampletones_core.constants.general import MAX_PERIOD
 from sampletones_core.instructions import InstructionUnion, NoiseInstruction, PulseInstruction, TriangleInstruction
 from sampletones_tools.calibration.corpus.midi import read_midi
-from sampletones_tools.calibration.corpus.nesmdb import INITIAL_DUTY_CYCLE, nesmdb_frames
+from sampletones_tools.calibration.corpus.nesmdb import INITIAL_DUTY_CYCLE, VOICE_CHANNELS, nesmdb_frames
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 
-from ..midifiles import midi_file, nesmdb_piece, ticks, track
+from ..midifiles import Message, midi_file, nesmdb_piece, ticks, track
 
 RATE: Final[int] = 60
 QUARTER_FRAME_TICKS: Final[int] = ticks(0.25 / RATE)
@@ -22,6 +22,7 @@ CONTROL_CHANGE: Final[int] = 0xB0
 VOLUME: Final[int] = 11
 TIMBRE: Final[int] = 12
 VELOCITY: Final[int] = 10
+SOFTER: Final[int] = 5
 A4: Final[int] = 69
 
 
@@ -68,8 +69,16 @@ class TestNesmdbFrames:
     def test_a_window_past_the_piece_holds_every_channel_silent(self) -> None:
         late = _frames(nesmdb_piece(), start_frame=2 * RATE, frames=3)
 
-        assert set(late) == {ChannelName.PULSE1, ChannelName.TRIANGLE, ChannelName.NOISE}
+        assert list(late) == list(VOICE_CHANNELS.values())
         assert not any(frame.on for stream in late.values() for frame in stream)
+
+    def test_a_voice_the_file_never_plays_holds_a_silent_line(
+        self,
+        frames: Dict[ChannelName, List[InstructionUnion]],
+    ) -> None:
+        assert list(frames) == list(VOICE_CHANNELS.values())
+        assert len(frames[ChannelName.PULSE2]) == RATE
+        assert not any(frame.on for frame in frames[ChannelName.PULSE2])
 
     def test_a_track_of_another_name_is_left_out(self) -> None:
         piece = midi_file(
@@ -79,7 +88,12 @@ class TestNesmdbFrames:
             ]
         )
 
-        assert set(_frames(piece, start_frame=0, frames=2)) == {ChannelName.PULSE2}
+        frames = _frames(piece, start_frame=0, frames=2)
+
+        assert list(frames) == list(VOICE_CHANNELS.values())
+        assert {channel for channel, stream in frames.items() if any(frame.on for frame in stream)} == {
+            ChannelName.PULSE2
+        }
 
 
 class TestFrameEdges(BaseTestSuite):
@@ -143,6 +157,52 @@ class TestOverlappingNotes(BaseTestSuite):
         assert frame[ChannelName.PULSE1][0] == PulseInstruction(
             on=True, pitch=test_case.expected, volume=VELOCITY, duty_cycle=INITIAL_DUTY_CYCLE
         )
+
+
+class TestStrikingAgain(BaseTestSuite):
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        messages: Tuple[Message, ...]
+
+    test_cases = (
+        TestCase(
+            messages=(
+                (0, bytes([NOTE_ON, A4, VELOCITY])),
+                (ticks(0.5), bytes([NOTE_ON, A4, SOFTER])),
+                (ticks(0.5), bytes([NOTE_OFF, A4, 0])),
+            ),
+            label="struck again while it sounds",
+        ),
+        TestCase(
+            messages=(
+                (0, bytes([NOTE_ON, A4, VELOCITY])),
+                (ticks(0.5), bytes([NOTE_OFF, A4, 0])),
+                (0, bytes([NOTE_ON, A4, SOFTER])),
+                (ticks(0.5), bytes([NOTE_OFF, A4, 0])),
+            ),
+            label="released, then struck at one tick",
+        ),
+        TestCase(
+            messages=(
+                (0, bytes([NOTE_ON, A4, VELOCITY])),
+                (ticks(0.5), bytes([NOTE_ON, A4, SOFTER])),
+                (0, bytes([NOTE_OFF, A4, 0])),
+                (ticks(0.5), bytes([NOTE_OFF, A4, 0])),
+            ),
+            label="struck, then released at one tick",
+        ),
+    )
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda case: case.label)
+    def test_a_note_struck_again_plays_the_new_strike_from_its_tick(self, test_case: TestCase) -> None:
+        pulse = _frames(midi_file([track("p1", test_case.messages, tempo=True)]), start_frame=0, frames=RATE)[
+            ChannelName.PULSE1
+        ]
+
+        assert [pulse[RATE // 4], pulse[3 * RATE // 4]] == [
+            PulseInstruction(on=True, pitch=A4, volume=volume, duty_cycle=INITIAL_DUTY_CYCLE)
+            for volume in (VELOCITY, SOFTER)
+        ]
 
 
 class TestVolumeAndTimbre:
