@@ -5,9 +5,11 @@ import numpy as np
 import pytest
 
 from sampletones_core.configs import Config
+from sampletones_core.configs.library import InstructionsLibraryConfig
 from sampletones_core.constants.enums import ChannelName, GeneratorClassName
+from sampletones_core.constants.general import MAX_VOLUME
 from sampletones_core.fft import Fragment, Window
-from sampletones_core.fft.features import FeatureExtractor
+from sampletones_core.fft.features import FeatureExtractor, get_feature_extractor
 from sampletones_core.generators import GeneratorUnion, get_generators_by_channels
 from sampletones_core.instructions import InstructionUnion, PulseInstruction
 from sampletones_core.library import InstructionLibraryData, InstructionLibraryFragment
@@ -27,7 +29,11 @@ from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.conti
     StemContinuity,
 )
 from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.fit import FitTarget
-from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.layout import StemLayout, separate_layouts
+from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.layout import (
+    Slot,
+    StemLayout,
+    separate_layouts,
+)
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 from sampletones_core.reconstructions.reconstructor.worker import ReconstructorWorker
@@ -36,7 +42,7 @@ from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 
 from ..conftest import JOINT_PULSE_VOLUMES, JOINT_SIGNAL_LENGTH, rendered_fragment
-from .conftest import heard_alone, played_lines
+from .conftest import heard_alone, library_matcher, played_lines
 
 PULSES: Final[List[ChannelName]] = [ChannelName.PULSE1, ChannelName.PULSE2]
 PITCHES: Final[FrozenSet[int]] = frozenset({64, 67})
@@ -44,6 +50,7 @@ VOLUMES: Final[FrozenSet[int]] = frozenset({4, 8, 12})
 DUTY_CYCLES: Final[FrozenSet[int]] = frozenset({1, 3})
 PITCH: Final[int] = 64
 OTHER_PITCH: Final[int] = 67
+UNDER_PITCH: Final[int] = 57
 LOUD: Final[int] = 12
 HALF: Final[int] = 8
 QUIET: Final[int] = 4
@@ -55,6 +62,9 @@ OWN_COST: Final[float] = 0.0
 ONSET_DUTY: Final[int] = 2
 RESTS: Final[int] = 6
 HELD_FRAMES: Final[int] = 6
+CURVED_GAMMA: Final[int] = 50
+LOUDER_DRIVE: Final[float] = 2.0
+SOFTER_DRIVE: Final[float] = 0.5
 
 
 def _pulse(pitch: int, volume: int, duty_cycle: int) -> PulseInstruction:
@@ -62,6 +72,8 @@ def _pulse(pitch: int, volume: int, duty_cycle: int) -> PulseInstruction:
 
 
 LEAD: Final[PulseInstruction] = _pulse(PITCH, LOUD, WRITTEN_DUTY)
+DRIVEN_LEAD: Final[PulseInstruction] = _pulse(PITCH, MAX_VOLUME, ONSET_DUTY)
+DRIVEN_UNDER: Final[PulseInstruction] = _pulse(UNDER_PITCH, QUIET, ONSET_DUTY)
 HARMONY: Final[PulseInstruction] = _pulse(OTHER_PITCH, HALF, WRITTEN_DUTY)
 SILENT: Final[PulseInstruction] = PulseInstruction.null_instruction()
 
@@ -125,7 +137,14 @@ class _Judging:
     def judged(self, continuity: StemContinuity) -> CombinationJudge:
         """A judge of the frame keeping to ``continuity``."""
         return CombinationJudge(
-            self.fragment, self.layout, self.catalogs, self.matcher, self.weights, self.hearing, continuity
+            self.fragment,
+            self.layout,
+            self.catalogs,
+            self.matcher,
+            self.weights,
+            self.hearing.driven,
+            self.hearing,
+            continuity,
         )
 
     def kept(self, before: InstructionUnion, after: InstructionUnion) -> ChannelContinuity:
@@ -193,6 +212,90 @@ def onset_fixture(
     line = [SILENT] * RESTS + [played] * HELD_FRAMES
     audio = played_lines(config, {ChannelName.PULSE1: line}, len(line))
     return _Judging(config, extractor.extract(audio)[RESTS], pulse_channels, joint_matcher)
+
+
+class _Phasing:
+    """A frame judged by a stem of two pulses driven at two and at a half, its features read at gamma fifty.
+
+    The first pulse plays ``DRIVEN_LEAD`` and the second ``DRIVEN_UNDER``. Their library feature values
+    over the drive squared would phase the second first, and the transform of their driven powers
+    phases the first first.
+    """
+
+    def __init__(self, config: Config, channels: Dict[ChannelName, GeneratorUnion]) -> None:
+        self.matcher = library_matcher(config, ChannelName.PULSE1, [SILENT, DRIVEN_LEAD, DRIVEN_UNDER])
+        provider = self.matcher.candidate_provider
+        self.layout = StemLayout(
+            stem_id=0,
+            slots=(
+                Slot(channel_name=ChannelName.PULSE1, kind=GeneratorClassName.PULSE_GENERATOR, drive=LOUDER_DRIVE),
+                Slot(channel_name=ChannelName.PULSE2, kind=GeneratorClassName.PULSE_GENERATOR, drive=SOFTER_DRIVE),
+            ),
+            cap=len(PULSES),
+        )
+        self.catalog = KindCatalog.build(provider, channels[ChannelName.PULSE1])
+        catalogs = {GeneratorClassName.PULSE_GENERATOR: self.catalog}
+        extractor = get_feature_extractor(config, Window.from_config(config))
+        fragment = rendered_fragment(config, extractor, {ChannelName.PULSE1: LEAD})
+        hearing = heard_alone(self.layout, catalogs, provider, len(fragment.feature.values))
+        self.weights = np.asarray(to_numpy(self.matcher.scorer.criterion.weights), dtype=np.float64).reshape(-1)
+        self.judge = CombinationJudge(
+            fragment,
+            self.layout,
+            catalogs,
+            self.matcher,
+            self.weights,
+            hearing.driven,
+            hearing,
+            StemContinuity.free(self.layout, catalogs),
+        )
+        self.rows: Rows = (
+            self.catalog.rows_by_instruction[DRIVEN_LEAD],
+            self.catalog.rows_by_instruction[DRIVEN_UNDER],
+        )
+
+    def driven_loudness(self, place: int) -> float:
+        """The criterion's weighting of the transform of the row's power at its pulse's drive."""
+        drive = self.layout.slots[place].drive
+        return float(self._features(self.catalog.powers[self.rows[place]] / drive**2) @ self.weights)
+
+    def library_loudness(self, place: int) -> float:
+        """The criterion's weighting of the row's library feature values, over its pulse's drive squared."""
+        drive = self.layout.slots[place].drive
+        return float(self._features(self.catalog.powers[self.rows[place]]) @ self.weights) / drive**2
+
+    def alone(self, place: int) -> Rows:
+        """The rows with every pulse but the one at ``place`` silenced."""
+        return tuple(row if index == place else self.catalog.silence for index, row in enumerate(self.rows))
+
+    def _features(self, power: np.ndarray) -> np.ndarray:
+        return np.asarray(to_numpy(self.matcher.candidate_provider.features_of(power)), dtype=np.float64)
+
+
+@pytest.fixture(name="phasing", scope="module")
+def phasing_fixture(pulse_channels: Dict[ChannelName, GeneratorUnion]) -> _Phasing:
+    return _Phasing(Config(library=InstructionsLibraryConfig(transformation_gamma=CURVED_GAMMA)), pulse_channels)
+
+
+class TestTheOrderOfPhasing(BaseTestSuite):
+    """Channels are phased loudest first by the criterion's weighting of each row heard alone at its drive.
+
+    At a transformation gamma of fifty the features read power through a curve, so a row's loudness
+    at a drive is the weighted transform of its power at that drive, which reverses the order its
+    library feature values over the drive squared give.
+    """
+
+    def test_pulses_driven_apart_are_phased_in_the_order_of_the_transform_of_their_driven_powers(
+        self, phasing: _Phasing
+    ) -> None:
+        driven = [phasing.driven_loudness(place) for place in range(len(PULSES))]
+        library = [phasing.library_loudness(place) for place in range(len(PULSES))]
+        louder = int(np.argmax(driven))
+
+        both, louder_alone = phasing.judge.scored([phasing.rows, phasing.alone(louder)])
+
+        assert int(np.argmax(library)) != louder
+        assert both.contributions[louder] is louder_alone.contributions[louder]
 
 
 class TestScoringACombination(BaseTestSuite):

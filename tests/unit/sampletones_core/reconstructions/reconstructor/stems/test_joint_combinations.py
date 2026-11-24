@@ -138,7 +138,9 @@ def _proposed(
 ) -> Dict[GeneratorClassName, List[int]]:
     hearing = heard_alone(layout, catalogs, matcher.candidate_provider, len(fragment.feature.values))
     target = FitTarget.of(fragment, matcher.scorer.criterion)
-    return proposed_rows(fragment, target, layout, NoteDictionary.of(layout, catalogs), catalogs, matcher, hearing)
+    return proposed_rows(
+        fragment, target, layout, NoteDictionary.of(layout, catalogs).heard(hearing), catalogs, matcher, hearing
+    )
 
 
 def _played(

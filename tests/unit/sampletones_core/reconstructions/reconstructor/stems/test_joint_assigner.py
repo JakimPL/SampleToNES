@@ -30,6 +30,7 @@ from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.catal
 from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.choice import ScoredCombination
 from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.combinations import Rows
 from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.continuity import ChannelContinuity
+from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.hearing import SteadyHearing
 from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.layout import separate_layouts
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_core.reconstructions.reconstructor.stems.configs.entry import StemEntry
@@ -120,6 +121,30 @@ class TestTheJointAssignment(BaseTestSuite):
         heads = _heads(assigner.assign({0: chord}))
 
         assert _notes(heads) == {("pulse", 64), ("pulse", 67), ("triangle", 48)}
+
+    def test_frames_heard_alone_hear_the_stem_s_atoms_once_for_the_recording(
+        self,
+        chord: Fragment,
+        all_channels: Dict[ChannelName, GeneratorUnion],
+        joint_matcher: FrameMatcher,
+    ) -> None:
+        """A frame heard alone hears every atom alike, so the first such frame hears them for the frames after it."""
+        assigner = _assigner(
+            StemsConfig.single_entry(StemSettings.covering(EVERY_CHANNEL)), all_channels, joint_matcher
+        )
+        (layout,) = assigner.layouts
+
+        assigner.assign({layout.stem_id: chord})
+        atoms = assigner.steady_atoms[layout.stem_id]
+        assigner.assign({layout.stem_id: chord})
+
+        hearing = SteadyHearing(
+            layout=layout, catalogs=assigner.catalogs, driven=assigner.driven, bins=len(chord.feature.values)
+        )
+        heard = assigner.dictionaries[layout.stem_id].heard(hearing)
+        assert assigner.steady_atoms[layout.stem_id] is atoms
+        assert np.array_equal(atoms.features, heard.features)
+        assert np.array_equal(atoms.powers, heard.powers)
 
     def test_every_channel_held_offers_its_silence_within_the_width_the_decoder_reads(
         self,
@@ -380,6 +405,26 @@ class TestAssigningBesideTheNeighbors(BaseTestSuite):
         assignment = self._beside(config, window, extractor, every_channel_assigner, staccato, BASS_FRAMES)
 
         assert _notes(_heads(assignment)) == {("pulse", LEAD.pitch)}
+
+    def test_a_frame_among_its_neighbors_fits_its_notes_heard_alone(
+        self,
+        config: Config,
+        window: Window,
+        extractor: FeatureExtractor,
+        every_channel_assigner: JointAssigner,
+        staccato: Dict[ChannelName, List[InstructionUnion]],
+    ) -> None:
+        """The fit of every note hears each note alone among the frame's neighbors too, as a frame heard alone does."""
+        assigner = every_channel_assigner
+        (layout,) = assigner.layouts
+
+        self._beside(config, window, extractor, assigner, staccato, BASS_FRAMES)
+
+        bins = int(next(iter(assigner.catalogs.values())).powers.shape[1])
+        alone = SteadyHearing(layout=layout, catalogs=assigner.catalogs, driven=assigner.driven, bins=bins)
+        heard = assigner.dictionaries[layout.stem_id].heard(alone)
+        assert np.array_equal(assigner.steady_atoms[layout.stem_id].features, heard.features)
+        assert np.array_equal(assigner.steady_atoms[layout.stem_id].powers, heard.powers)
 
     def test_a_frame_inside_a_held_chord_keeps_the_chord(
         self,

@@ -15,7 +15,7 @@ class Slot:
     """One channel a stem may sound in a frame, with the kind it plays and the level the stem drives it at.
 
     A drive ``d`` asks the channel to play its part of the stem's audio ``d`` times louder, so the
-    channel reads each row at ``1 / d²`` of its library power.
+    channel reads each row at ``1 / d²`` of its library power (``driven_powers``).
 
     Attributes:
         channel_name: The channel.
@@ -105,13 +105,15 @@ class StemLayout:
         """The places of the stem's channels of one kind, in channel order."""
         return tuple(place for place, slot in enumerate(self.slots) if slot.kind == kind)
 
-    def gain(self, kind: GeneratorClassName) -> float:
-        """How much of a row's library power the stem's channels of ``kind`` sound when all of them play it.
+    def gain(self, place: int) -> float:
+        """How many times its power on the channel at ``place`` a row sounds when every channel of that kind plays it.
 
-        Each channel reads the row at ``1 / d²`` of its power at its drive ``d``, and the channels add
-        in power.
+        Each channel reads the row at its own drive ``d``, at ``1 / d²`` of its library power
+        (``driven_powers``), and the channels add in power. Against the channel at ``place``, played
+        at ``d_place``, they sound ``Σ_c (d_place / d_c)²``.
         """
-        return sum(1.0 / slot.drive**2 for slot in self.of_kind(kind))
+        drive = self.slots[place].drive
+        return sum((drive / slot.drive) ** 2 for slot in self.of_kind(self.slots[place].kind))
 
 
 def separate_layouts(stems_config: StemsConfig, channels: Dict[ChannelName, GeneratorUnion]) -> Tuple[StemLayout, ...]:

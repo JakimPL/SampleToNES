@@ -318,6 +318,15 @@ assignment reads the frame in four steps:
    the same note at its nearest volumes, the best rows of the other proposed notes and its silence, each
    scored with the other channels playing the choice.
 
+Every step hears a row as one channel plays it in this frame. A row's spectrum belongs to the row played
+on a channel: the channel's [drive](../glossary.md#drive) scales what the row adds, and a frame among its
+neighbors hears the row through its analysis window ([section 5.6](#56-hearing-a-frame-among-its-neighbors)).
+The library holds each row's power, and the frame's hearing is the one reader that turns a row into what
+the frame hears. So the first fit hears each note on the channel its proposal would sound on, and lets it
+reach what every channel of its kind plays at full volume. A note's strength is the power its level sounds
+heard alone. The full criterion phases the channels by how loud each plays its row heard alone at its
+drive.
+
 The two pulses go to the channels that keep each nearest the note it played a frame before, so a held
 line stays on its channel. Every source is solved on its own channels, so the joint assignment needs
 each channel held by one source.
@@ -408,9 +417,11 @@ it. What the neighbors play is a fixed part of every mix the frame's assignment 
 row the frame plays adds its own share of its power. A row sounding the note held up to the frame, or
 the note held from it, extends that note, and the two add in amplitude. A note held through the frame
 then reaches it as a note heard alone does, and a note that stopped two frames before is heard as its
-frames' tail. Every step of the joint assignment reads the frame this way: the fit of every note stands
-over the leak, a fitted level reads its note at the level of the note it extends, and the full criterion
-scores each combination with the leak in its mix.
+frames' tail. The joint assignment's second and third steps read the frame this way: the fit of every
+combination reads a fitted level at the level of the note it extends, and the full criterion scores each
+combination with the leak in its mix. Its first step, the fit of every note, stands over the leak and hears
+each note alone, as a note held through the whole window. That fit weighs every note of the frame at once,
+and the window model reads a note cut at a frame boundary only approximately.
 
 A low bin's window averages a channel over many frames, so a channel switched on and off from frame to
 frame reads there as a level between the two: a triangle quieter than its one volume, or a noise quieter

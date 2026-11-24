@@ -122,19 +122,29 @@ class TestStemLayout(BaseTestSuite):
         assert StemLayout.of(alone, all_channels).interchangeable_pulses == ()
 
 
-class TestAKindsGain(BaseTestSuite):
-    """A channel at drive ``d`` reads a row at ``1 / d²`` of its power, and a kind's channels add in power."""
+class TestAChannelsGain(BaseTestSuite):
+    """A channel at drive ``d`` reads a row at ``1 / d²`` of its power, and a kind's channels add in power.
 
-    def test_a_kind_s_gain_adds_its_channels_shares_of_a_row_s_power(
-        self, all_channels: Dict[ChannelName, GeneratorUnion]
+    A channel's gain counts what every channel of its kind sounds of a row in the row's power on that
+    channel, so on either channel it reaches the kind's whole share of the row's library power.
+    """
+
+    @pytest.mark.parametrize("place", [0, 1], ids=["louder_pulse", "softer_pulse"])
+    def test_on_either_pulse_the_gain_reaches_what_both_pulses_sound(
+        self, place: int, all_channels: Dict[ChannelName, GeneratorUnion]
     ) -> None:
         layout = StemLayout.of(_driven_apart(), all_channels)
 
-        assert layout.gain(PULSE) == pytest.approx(1.0 / LOUDER_DRIVE**2 + 1.0 / SOFTER_DRIVE**2)
-        assert layout.gain(TRIANGLE) == 1.0
+        heard_on_the_channel = 1.0 / layout.slots[place].drive ** 2
+        assert layout.gain(place) * heard_on_the_channel == pytest.approx(1.0 / LOUDER_DRIVE**2 + 1.0 / SOFTER_DRIVE**2)
 
-    def test_a_kind_the_stem_lacks_sounds_nothing(self, all_channels: Dict[ChannelName, GeneratorUnion]) -> None:
-        assert StemLayout.of(_driven_apart(), all_channels).gain(NOISE) == 0.0
+    @pytest.mark.parametrize("drive", [UNIT_DRIVE, LOUDER_DRIVE, SOFTER_DRIVE], ids=["unit", "louder", "softer"])
+    def test_a_lone_channel_of_its_kind_gains_one_at_any_drive(self, drive: float) -> None:
+        bass = Slot(channel_name=ChannelName.TRIANGLE, kind=TRIANGLE, drive=drive)
+        lead = Slot(channel_name=ChannelName.PULSE1, kind=PULSE, drive=LOUDER_DRIVE)
+        layout = StemLayout(stem_id=0, slots=(lead, bass), cap=2)
+
+        assert layout.gain(1) == 1.0
 
 
 class TestASlotsLevels(BaseTestSuite):

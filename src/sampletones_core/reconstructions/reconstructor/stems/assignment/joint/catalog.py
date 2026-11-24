@@ -96,7 +96,9 @@ class UnitRow:
 class KindCatalog:
     """One kind of channel's library rows, each read as the note, the timbre and the volume it sounds.
 
-    Every row's power and feature values are read at unit drive. The rows of one note in one timbre
+    The catalog holds each row's library power, read at unit drive. A row's feature values belong to
+    the row played on a channel, at the drive the stem gives the channel, so they are read where a
+    frame hears the row (``FrameHearing``, ``DrivenFeatures``). The rows of one note in one timbre
     differ in volume alone, so the search moves along a note's rows to change its level or its timbre.
 
     Attributes:
@@ -104,7 +106,6 @@ class KindCatalog:
         generator: A generator of the class, which answers its silent instruction.
         instructions: The rows, in the order the candidate provider holds them.
         powers: Each row's power density per bin, at unit drive.
-        features: Each row's feature values, at unit drive.
         notes: Each row's note, ``SILENT_NOTE`` for the silent row.
         timbres: Each row's timbre within its note.
         volumes: Each row's volume; the triangle's one level reads as full volume.
@@ -116,7 +117,6 @@ class KindCatalog:
     generator: GeneratorUnion
     instructions: Tuple[InstructionUnion, ...]
     powers: np.ndarray
-    features: np.ndarray
     notes: np.ndarray
     timbres: np.ndarray
     volumes: np.ndarray
@@ -141,7 +141,6 @@ class KindCatalog:
             generator=generator,
             instructions=candidates.instructions,
             powers=np.asarray(to_numpy(candidates.powers), dtype=np.float64),
-            features=np.asarray(to_numpy(provider.features_of(candidates.powers)), dtype=np.float64),
             notes=np.array([sound.note for sound in sounds], dtype=np.int64),
             timbres=np.array([sound.timbre for sound in sounds], dtype=np.int64),
             volumes=np.array([sound.volume for sound in sounds], dtype=np.int64),

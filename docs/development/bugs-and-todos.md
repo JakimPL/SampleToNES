@@ -185,17 +185,11 @@ currently out of line. An entry leaves when the code meets the contract again.
   interchangeable, so a note the second pulse's drive matches goes unsearched
   ([stems](../concepts/stems.md) scores channels driven differently apart). Searching every placement of a
   kind's proposals where its channels' drives differ closes it.
-* In the neighbor pass, the fit of every note reads a note held through the frame weaker by the
-  neighbors' share of it (0.95 of its strength at note 64, 0.79 at note 48), since its atoms are the
-  steady library rows standing over the leak. Reading its atoms through the window model, as the
-  combinations' fit does, closes it.
-* Under `logfft` the window model reads every log bin as one FFT bin. Above about 500 Hz a log bin sums
-  several FFT bins, and a note cut at a frame boundary misses the model by up to 0.17 of its steady
-  reading. Modeling a log bin as the sum of the FFT bins it covers closes it.
-* The joint judge orders a combination's channels by their library feature values over the drive squared,
-  which reads their driven loudness at a transformation gamma of zero alone. At another gamma, two
-  channels driven apart may be phased in an order their driven powers reverse (`CombinationJudge._loudness`).
-  Reading the order from the driven features (`DrivenFeatures`) closes it.
+* Around a note cut at a frame boundary, the frames beside the cut read 1.2 to 4 times what the window
+  model predicts, under `fft` and `logfft` at every frequency and under `cqt` below about 460 Hz, since
+  the cut spreads the note's energy into the bins beside it. The neighbor pass hears those frames through
+  the model. Modeling how each library row's partials reach each bin through the window, read when the
+  library is built, closes it.
 * Another voice inside a harmonic's bin pulls the pitch reading. A partial of another voice within half a
   semitone of one of a note's harmonics shares that harmonic's bin and adds to its reading: a 65 Hz bass
   under a steady 330 Hz pulse reads about 4 cents off, and within a cent alone.

@@ -11,6 +11,7 @@ from sampletones_core.fft.features import FeatureExtractor
 from sampletones_core.generators import GeneratorUnion, get_generators_by_channels
 from sampletones_core.instructions import InstructionUnion, PulseInstruction, TriangleInstruction
 from sampletones_core.library import InstructionLibraryData, InstructionLibraryFragment
+from sampletones_core.reconstructions.reconstructor.candidates import CandidateProvider
 from sampletones_core.reconstructions.reconstructor.matching import FrameMatcher
 from sampletones_core.reconstructions.reconstructor.stems.assignment.joint import proposals
 from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.catalog import (
@@ -32,6 +33,7 @@ from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.propo
 )
 from sampletones_core.reconstructions.reconstructor.window.surroundings import HeldNote, TonalSurroundings
 from sampletones_core.reconstructions.reconstructor.worker import ReconstructorWorker
+from sampletones_shared.array import to_numpy
 from tests.suite.base import BaseTestSuite
 
 from ..conftest import (
@@ -170,11 +172,20 @@ def _proposed(
         fragment,
         FitTarget.of(fragment, matcher.scorer.criterion),
         layout,
-        NoteDictionary.of(layout, catalogs),
+        NoteDictionary.of(layout, catalogs).heard(hearing),
         catalogs,
         matcher,
         hearing,
     )
+
+
+def _bins(catalogs: Mapping[GeneratorClassName, KindCatalog]) -> int:
+    """How many bins the library's rows, and so every frame, hold."""
+    return int(next(iter(catalogs.values())).powers.shape[1])
+
+
+def _features(provider: CandidateProvider, powers: np.ndarray) -> np.ndarray:
+    return np.asarray(to_numpy(provider.features_of(powers)), dtype=np.float64)
 
 
 def _first_rows(catalog: KindCatalog, rows: List[int]) -> Dict[int, int]:
@@ -192,7 +203,11 @@ def _first_notes(catalog: KindCatalog, rows: List[int]) -> List[int]:
 
 
 class TestTheNoteDictionary(BaseTestSuite):
-    """One atom per note and timbre: the note's unit row, capped at every channel of its kind at full volume."""
+    """One atom per note and timbre: the note's unit row, heard on its channel as the frame hears it.
+
+    A level of one sounds the unit row on the atom's channel at the channel's drive, and the cap and
+    the power move with the atom, so the most a note sounds is what every channel of its kind plays.
+    """
 
     def test_an_atom_stands_for_each_note_in_each_timbre_kind_by_kind_in_name_order(
         self, every_channel: StemLayout, catalogs: Dict[GeneratorClassName, KindCatalog]
@@ -206,49 +221,85 @@ class TestTheNoteDictionary(BaseTestSuite):
         ]
         assert list(zip(dictionary.kinds, dictionary.notes.tolist())) == expected
 
-    def test_an_atom_is_its_note_s_loudest_row_in_its_timbre_and_its_power_that_row_s_whole_power(
-        self, every_channel: StemLayout, catalogs: Dict[GeneratorClassName, KindCatalog]
+    def test_an_atom_heard_alone_is_its_note_s_loudest_row_at_its_channel_s_drive_its_power_that_row_s_whole(
+        self, driven_apart: StemLayout, catalogs: Dict[GeneratorClassName, KindCatalog], joint_matcher: FrameMatcher
     ) -> None:
-        dictionary = NoteDictionary.of(every_channel, catalogs)
+        """A frame heard alone hears every pulse on the first pulse, which the stem drives harder."""
+        provider = joint_matcher.candidate_provider
+        hearing = heard_alone(driven_apart, catalogs, provider, _bins(catalogs))
+        atoms = NoteDictionary.of(driven_apart, catalogs).heard(hearing)
         pulses = catalogs[PULSE]
-        first = dictionary.kinds.index(PULSE)
+        first = atoms.kinds.index(PULSE)
 
         for offset, duty_cycle in enumerate(sorted(JOINT_DUTY_CYCLES)):
-            loudest = pulses.loudest(min(JOINT_PULSE_PITCHES), duty_cycle)
-            assert np.array_equal(dictionary.features[first + offset], pulses.features[loudest])
-            assert dictionary.powers[first + offset] == pytest.approx(pulses.powers[loudest].sum())
+            loudest = pulses.powers[pulses.loudest(min(JOINT_PULSE_PITCHES), duty_cycle)]
+            assert atoms.features[first + offset] == pytest.approx(_features(provider, loudest / LOUDER_DRIVE**2))
+            assert atoms.powers[first + offset] == pytest.approx(loudest.sum() / LOUDER_DRIVE**2)
 
     def test_an_atom_reaches_every_channel_of_its_kind_playing_it_at_full_volume_at_its_drive(
-        self, driven_apart: StemLayout, catalogs: Dict[GeneratorClassName, KindCatalog]
+        self, driven_apart: StemLayout, catalogs: Dict[GeneratorClassName, KindCatalog], joint_matcher: FrameMatcher
     ) -> None:
+        """At its cap an atom sounds its note at full volume on every channel of its kind, each at its own drive."""
+        hearing = heard_alone(driven_apart, catalogs, joint_matcher.candidate_provider, _bins(catalogs))
         dictionary = NoteDictionary.of(driven_apart, catalogs)
-        kinds = np.array(dictionary.kinds)
+        atoms = dictionary.heard(hearing)
 
-        assert dictionary.caps[kinds == PULSE] == pytest.approx(1.0 / LOUDER_DRIVE**2 + 1.0 / SOFTER_DRIVE**2)
-        assert dictionary.caps[kinds == TRIANGLE] == pytest.approx(1.0)
+        for atom, (kind, row) in enumerate(zip(dictionary.kinds, dictionary.rows)):
+            catalog = catalogs[kind]
+            unit = catalog.unit_of(int(row))
+            shares = sum(1.0 / slot.drive**2 for slot in driven_apart.of_kind(kind))
+            at_full_volume = unit.full_level * catalog.powers[unit.row].sum() * shares
+            assert atoms.caps[atom] * atoms.powers[atom] == pytest.approx(at_full_volume)
+
+    def test_a_cap_at_drive_two_reaches_the_loudest_row_at_that_drive(
+        self, catalogs: Dict[GeneratorClassName, KindCatalog], joint_matcher: FrameMatcher
+    ) -> None:
+        """The atom on a pulse driven at two sounds a quarter of its row's power, and its cap reaches that quarter.
+
+        A cap left at what a channel at unit drive reaches would count the drive twice.
+        """
+        provider = joint_matcher.candidate_provider
+        driven = _layout({ChannelName.PULSE1: LOUDER_DRIVE}, KINDS)
+        dictionary = NoteDictionary.of(driven, catalogs)
+        atoms = dictionary.heard(heard_alone(driven, catalogs, provider, _bins(catalogs)))
+        pulses = catalogs[PULSE]
+
+        for atom, row in enumerate(dictionary.rows):
+            loudest = pulses.powers[pulses.loudest(int(pulses.notes[row]), int(pulses.timbres[row]))]
+            assert atoms.caps[atom] * atoms.powers[atom] == pytest.approx(loudest.sum() / LOUDER_DRIVE**2)
+            assert atoms.caps[atom] * atoms.features[atom] == pytest.approx(
+                _features(provider, loudest / LOUDER_DRIVE**2)
+            )
 
     def test_a_note_s_strength_is_its_atoms_fitted_power_over_every_timbre(
-        self, every_channel: StemLayout, catalogs: Dict[GeneratorClassName, KindCatalog]
+        self, every_channel: StemLayout, catalogs: Dict[GeneratorClassName, KindCatalog], joint_matcher: FrameMatcher
     ) -> None:
-        dictionary = NoteDictionary.of(every_channel, catalogs)
-        levels = np.linspace(0.1, 1.0, len(dictionary.kinds))
+        hearing = heard_alone(every_channel, catalogs, joint_matcher.candidate_provider, _bins(catalogs))
+        atoms = NoteDictionary.of(every_channel, catalogs).heard(hearing)
+        levels = np.linspace(0.1, 1.0, len(atoms.kinds))
 
-        strengths = dictionary.strengths(levels).strengths
+        strengths = atoms.strengths(levels).strengths
 
         note = int(LEAD.pitch)
-        atoms = [atom for atom, kind in enumerate(dictionary.kinds) if kind == PULSE and dictionary.notes[atom] == note]
-        assert len(atoms) == len(JOINT_DUTY_CYCLES)
-        assert strengths[(PULSE, note)] == pytest.approx(sum(levels[atom] * dictionary.powers[atom] for atom in atoms))
+        chosen = [atom for atom, kind in enumerate(atoms.kinds) if kind == PULSE and atoms.notes[atom] == note]
+        assert len(chosen) == len(JOINT_DUTY_CYCLES)
+        assert strengths[(PULSE, note)] == pytest.approx(sum(levels[atom] * atoms.powers[atom] for atom in chosen))
 
     def test_a_stem_whose_kinds_sound_no_note_has_no_atom_over_the_bins(
-        self, one_pulse: StemLayout, mute_catalogs: Dict[GeneratorClassName, KindCatalog]
+        self,
+        one_pulse: StemLayout,
+        mute_catalogs: Dict[GeneratorClassName, KindCatalog],
+        mute_matcher: FrameMatcher,
     ) -> None:
+        bins = _bins(mute_catalogs)
         dictionary = NoteDictionary.of(one_pulse, mute_catalogs)
 
-        assert dictionary.features.shape == (0, mute_catalogs[PULSE].features.shape[1])
-        assert not dictionary.kinds
-        assert not dictionary.caps.size
-        assert not dictionary.powers.size
+        atoms = dictionary.heard(heard_alone(one_pulse, mute_catalogs, mute_matcher.candidate_provider, bins))
+
+        assert atoms.features.shape == (0, bins)
+        assert not atoms.kinds
+        assert not atoms.caps.size
+        assert not atoms.powers.size
 
     def test_the_fit_of_no_atom_gives_no_levels(
         self,
@@ -257,20 +308,21 @@ class TestTheNoteDictionary(BaseTestSuite):
         mute_catalogs: Dict[GeneratorClassName, KindCatalog],
         mute_matcher: FrameMatcher,
     ) -> None:
-        dictionary = NoteDictionary.of(one_pulse, mute_catalogs)
+        hearing = heard_alone(one_pulse, mute_catalogs, mute_matcher.candidate_provider, _bins(mute_catalogs))
+        atoms = NoteDictionary.of(one_pulse, mute_catalogs).heard(hearing)
         target = FitTarget.of(lead, mute_matcher.scorer.criterion)
 
         levels = fitted_levels(
             target,
-            dictionary.features,
-            dictionary.caps,
+            atoms.features,
+            atoms.caps,
             base=np.zeros_like(target.reference),
             start=FREE_FIT_START,
             updates=FREE_FIT_UPDATES,
         )
 
         assert levels.shape == (0,)
-        assert not dictionary.strengths(levels).strengths
+        assert not atoms.strengths(levels).strengths
 
 
 class TestNoteStrengths(BaseTestSuite):
@@ -437,7 +489,7 @@ class TestProposedRows(BaseTestSuite):
             lead,
             FitTarget.of(lead, joint_matcher.scorer.criterion),
             every_pulse,
-            NoteDictionary.of(every_pulse, pulses),
+            NoteDictionary.of(every_pulse, pulses).heard(hearing),
             pulses,
             joint_matcher,
             hearing,

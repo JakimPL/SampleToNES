@@ -11,7 +11,7 @@ from sampletones_shared.array import xp
 from .batches import cheapest_row, split_by_group
 from .catalog import KindCatalog, alike_timbres
 from .fit import FitTarget, fitted_levels
-from .hearing import FrameHearing
+from .hearing import FrameHearing, SteadyHearing, rows_by_place
 from .layout import StemLayout
 
 FREE_FIT_START: Final[float] = 0.05
@@ -31,8 +31,9 @@ KindNote = Tuple[GeneratorClassName, int]
 class NoteStrengths:
     """How strongly a frame sounds each note of each kind, as the fit of every note at once reads it.
 
-    A note's strength is the power its atoms are fitted to sound, summed over its timbres and
-    unweighted, so a bass counts for what it plays where the criterion's weights are light.
+    A note's strength is the power its atoms' fitted levels sound it at heard alone (``HeardAtoms``),
+    summed over its timbres and unweighted, so a bass counts for what it plays where the criterion's
+    weights are light.
 
     Attributes:
         strengths: Each note's strength, keyed by its kind and note, in the dictionary's order.
@@ -51,20 +52,32 @@ class NoteStrengths:
 
 
 @dataclass(frozen=True)
-class NoteDictionary:
-    """One atom per note and timbre a stem's channels may sound, which a frame's levels are fitted over.
+class HeardAtoms:
+    """A note dictionary's atoms as a frame heard alone hears them, each on the channel its note is heard on.
 
-    An atom is the unit row of its note in its timbre, at unit drive, so a level of one sounds that
-    row on a channel driven at one. Its cap is what every channel of its kind playing it at full
-    volume sounds, each at the drive the stem gives it. The atoms stand kind by kind in name order,
-    each kind's notes ascending and each note's timbres ascending.
+    A level of one sounds an atom's unit row on its channel, at the drive the stem gives the
+    channel, and a frame heard alone reads it there as the row's power at the drive
+    (``FrameHearing.unit_features``). An atom's cap is what every channel of its kind playing it at
+    full volume sounds, as a level of the atom on its channel: its full level times the channel's
+    ``StemLayout.gain``. The caps and the powers move with the atoms, so the most a note sounds is
+    what the stem's channels play at every drive.
+
+    An atom's power is its unit row's power heard alone on its channel
+    (``FrameHearing.steady_powers``), so a note's strength is the power its fitted level sounds the
+    note at, heard alone. The power sums the row's power densities over the bins, the form the
+    catalog holds a row's power in. The proposal counts (``PROPOSED_NOTES``) and the triangle run's
+    shares (``level.reading``) were tuned on strengths read in densities. A density weighs a partial
+    by its bin's width, so where the bins widen with frequency, as under ``cqt`` and above about
+    500 Hz under ``logfft``, a note's low partials weigh more than its high ones. Under ``fft`` every
+    bin is as wide, and the densities rank the notes as their bin powers do.
 
     Attributes:
         kinds: Each atom's kind.
         notes: Each atom's note.
-        features: Each atom's feature values, one per row.
+        features: Each atom's feature values heard alone at a level of one, one per row.
         caps: The highest level each atom may reach.
-        powers: Each atom's whole power, which a fitted note's strength is read in.
+        powers: Each atom's whole power heard alone on its channel, which a fitted note's strength is
+            read in.
     """
 
     kinds: Tuple[GeneratorClassName, ...]
@@ -72,41 +85,6 @@ class NoteDictionary:
     features: np.ndarray
     caps: np.ndarray
     powers: np.ndarray
-
-    @classmethod
-    def of(cls, layout: StemLayout, catalogs: Mapping[GeneratorClassName, KindCatalog]) -> Self:
-        """The dictionary of every note ``layout``'s channels may sound.
-
-        ``layout`` must hold at least one channel. The atoms' features are rows of their kinds'
-        catalogs, so they span the bins at every count of atoms: a stem whose kinds sound no note
-        has a dictionary of no atom over the bins.
-        """
-        kinds: List[GeneratorClassName] = []
-        notes: List[int] = []
-        features: List[np.ndarray] = []
-        caps: List[float] = []
-        powers: List[float] = []
-        for kind in sorted(layout.kinds):
-            catalog = catalogs[kind]
-            gain = layout.gain(kind)
-            rows: List[int] = []
-            for note in catalog.sounded_notes:
-                for unit in catalog.units_of(note):
-                    kinds.append(kind)
-                    notes.append(note)
-                    rows.append(unit.row)
-                    caps.append(gain * unit.full_level)
-                    powers.append(float(catalog.powers[unit.row].sum()))
-
-            features.append(catalog.features[np.array(rows, dtype=np.int64)])
-
-        return cls(
-            kinds=tuple(kinds),
-            notes=np.array(notes, dtype=np.int64),
-            features=np.concatenate(features),
-            caps=np.array(caps),
-            powers=np.array(powers),
-        )
 
     def strengths(self, levels: np.ndarray) -> NoteStrengths:
         """How strongly the frame sounds each note, the atoms fitted at ``levels``."""
@@ -116,6 +94,77 @@ class NoteDictionary:
             strengths[key] = strengths.get(key, 0.0) + float(energy)
 
         return NoteStrengths(strengths=strengths)
+
+
+@dataclass(frozen=True)
+class NoteDictionary:
+    """One atom per note and timbre a stem's channels may sound, which a frame's levels are fitted over.
+
+    An atom is the unit row of its note in its timbre, so a level of one sounds that row. The
+    dictionary holds the atoms' rows, and a frame heard alone hears them (``heard``): a row's sound
+    belongs to the row on a channel. The atoms stand kind by kind in name order, each kind's notes
+    ascending and each note's timbres ascending.
+
+    Attributes:
+        layout: The stem's channels.
+        kinds: Each atom's kind.
+        notes: Each atom's note.
+        rows: Each atom's unit row.
+        full_levels: The level of each atom sounding its note at full volume on one channel.
+    """
+
+    layout: StemLayout
+    kinds: Tuple[GeneratorClassName, ...]
+    notes: np.ndarray
+    rows: np.ndarray
+    full_levels: np.ndarray
+
+    @classmethod
+    def of(cls, layout: StemLayout, catalogs: Mapping[GeneratorClassName, KindCatalog]) -> Self:
+        """The dictionary of every note ``layout``'s channels may sound.
+
+        A stem whose kinds sound no note has a dictionary of no atom.
+        """
+        kinds: List[GeneratorClassName] = []
+        notes: List[int] = []
+        rows: List[int] = []
+        full_levels: List[float] = []
+        for kind in sorted(layout.kinds):
+            catalog = catalogs[kind]
+            for note in catalog.sounded_notes:
+                for unit in catalog.units_of(note):
+                    kinds.append(kind)
+                    notes.append(note)
+                    rows.append(unit.row)
+                    full_levels.append(unit.full_level)
+
+        return cls(
+            layout=layout,
+            kinds=tuple(kinds),
+            notes=np.array(notes, dtype=np.int64),
+            rows=np.array(rows, dtype=np.int64),
+            full_levels=np.array(full_levels, dtype=np.float64),
+        )
+
+    def heard(self, hearing: SteadyHearing) -> HeardAtoms:
+        """The atoms as a frame heard alone hears them, each on the channel it hears its note's proposal on.
+
+        The atoms span the frame's bins at every count of atoms, so a dictionary of no atom is heard
+        as no atom over the bins.
+        """
+        features = np.zeros((len(self.kinds), hearing.leak.shape[0]))
+        caps = np.zeros(len(self.kinds))
+        powers = np.zeros(len(self.kinds))
+        for kind in sorted(set(self.kinds)):
+            atoms = np.flatnonzero([atom_kind == kind for atom_kind in self.kinds])
+            for place, positions in rows_by_place(hearing, kind, self.rows[atoms]):
+                placed = atoms[positions]
+                rows = [int(row) for row in self.rows[placed]]
+                features[placed] = hearing.unit_features(place, rows)
+                caps[placed] = self.full_levels[placed] * self.layout.gain(place)
+                powers[placed] = [float(power.sum()) for power in hearing.steady_powers(place, rows)]
+
+        return HeardAtoms(kinds=self.kinds, notes=self.notes, features=features, caps=caps, powers=powers)
 
 
 @dataclass(frozen=True)
@@ -156,19 +205,40 @@ class NoteTrials:
         return self.matcher.scorer.shortfall_weighted_costs(self.fragment, features, SHORTFALL_WEIGHT)
 
 
+def note_strengths(target: FitTarget, atoms: HeardAtoms, hearing: FrameHearing) -> NoteStrengths:
+    """How strongly the frame sounds each note, every note fitted to it at once.
+
+    The atoms are heard as a frame heard alone hears them (``NoteDictionary.heard``): each row at its
+    channel's drive, as a note held through the whole window. They are fitted over what the frame
+    holds before its rows sound, the leak of ``hearing``, from ``FREE_FIT_START`` for
+    ``FREE_FIT_UPDATES`` updates. Among the frame's neighbors the fit hears each row alone as well,
+    since the window model reads a note cut at a frame boundary approximately, and the fit weighs
+    every note of the frame through what it reads.
+    """
+    levels = fitted_levels(
+        target,
+        atoms.features,
+        atoms.caps,
+        base=hearing.leak_features,
+        start=FREE_FIT_START,
+        updates=FREE_FIT_UPDATES,
+    )
+    return atoms.strengths(levels)
+
+
 def proposed_rows(
     fragment: Fragment,
     target: FitTarget,
     layout: StemLayout,
-    dictionary: NoteDictionary,
+    atoms: HeardAtoms,
     catalogs: Mapping[GeneratorClassName, KindCatalog],
     matcher: FrameMatcher,
     hearing: FrameHearing,
 ) -> Dict[GeneratorClassName, List[int]]:
     """The rows a frame's search starts from: each kind's strongest notes, each on its best row alone.
 
-    Every note is fitted to the frame at once, over what the frame holds before its rows sound, from
-    ``FREE_FIT_START`` for ``FREE_FIT_UPDATES`` updates. Each kind proposes its ``PROPOSED_NOTES``
+    Every note is fitted to the frame at once, its ``atoms`` heard alone over what ``hearing`` holds
+    before its rows sound (``note_strengths``), and each kind proposes its ``PROPOSED_NOTES``
     strongest notes. A note is proposed on the row of its own, of any timbre and volume, that fits
     the frame best alone, which settles its duty cycle and a first volume. A row alone leaves the
     frame's other notes uncovered, so the bins it falls short in count at ``SHORTFALL_WEIGHT`` of
@@ -181,15 +251,7 @@ def proposed_rows(
         The proposed rows of each kind the stem plays: its notes' rows, strongest first, then the
         second duty cycles in the same order.
     """
-    levels = fitted_levels(
-        target,
-        dictionary.features,
-        dictionary.caps,
-        base=hearing.leak_features,
-        start=FREE_FIT_START,
-        updates=FREE_FIT_UPDATES,
-    )
-    strengths = dictionary.strengths(levels)
+    strengths = note_strengths(target, atoms, hearing)
     trials = NoteTrials(fragment=fragment, matcher=matcher, hearing=hearing)
     proposals: Dict[GeneratorClassName, List[int]] = {}
     for kind in sorted(layout.kinds):
@@ -222,10 +284,8 @@ def _proposal_powers(hearing: FrameHearing, kind: GeneratorClassName, rows: np.n
 
     The rows placed on one channel are heard together.
     """
-    places = np.array([hearing.place_of(kind, int(row)) for row in rows])
     heard = np.zeros((rows.shape[0], hearing.leak.shape[0]))
-    for place in np.unique(places):
-        chosen = places == place
-        heard[chosen] = hearing.powers(int(place), [int(row) for row in rows[chosen]])
+    for place, positions in rows_by_place(hearing, kind, rows):
+        heard[positions] = hearing.powers(place, [int(row) for row in rows[positions]])
 
     return heard

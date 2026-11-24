@@ -15,7 +15,10 @@ from sampletones_core.reconstructions.reconstructor.candidates import CandidateP
 from sampletones_core.reconstructions.reconstructor.matching import FrameMatcher
 from sampletones_core.reconstructions.reconstructor.mix import FrameMix
 from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.catalog import KindCatalog
-from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.hearing import SequenceHearing
+from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.hearing import (
+    SequenceHearing,
+    rows_by_place,
+)
 from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.layout import Slot, StemLayout
 from sampletones_core.reconstructions.reconstructor.window.profiles import FrameProfiles, frame_profiles
 from sampletones_core.reconstructions.reconstructor.window.surroundings import (
@@ -153,6 +156,7 @@ class TestAFrameHeardAlone(BaseTestSuite):
         assert np.array_equal(
             hearing.powers(place, rows), catalogs[PULSE].powers[rows] / pulses.slots[place].drive ** 2
         )
+        assert np.array_equal(hearing.steady_powers(place, rows), hearing.powers(place, rows))
 
     @pytest.mark.parametrize("place", [0, 1], ids=["first", "second"])
     def test_a_fit_reads_a_row_in_the_feature_values_of_its_power(
@@ -292,6 +296,7 @@ class TestAFrameHeardAmongItsNeighbors(BaseTestSuite):
         hearing = SequenceHearing.of(pulses, catalogs, around, provider)
         library = catalog.powers[rows] / pulses.slots[place].drive ** 2
 
+        assert np.array_equal(hearing.steady_powers(place, rows), library)
         assert hearing.powers(place, rows) == pytest.approx(around[place].heard(keys, library))
         assert hearing.unit_powers(place, rows) == pytest.approx(around[place].gains(keys) * library)
         assert hearing.unit_features(place, rows) == pytest.approx(
@@ -353,6 +358,28 @@ class TestWhereAProposalIsHeard(BaseTestSuite):
         hearing = SequenceHearing.of(pulses, catalogs, around, provider)
 
         assert hearing.place_of(PULSE, catalog.rows_by_instruction[test_case.proposed]) == test_case.expected
+
+    def test_rows_are_read_together_on_the_channel_hearing_each(
+        self,
+        pulses: StemLayout,
+        catalogs: Dict[GeneratorClassName, KindCatalog],
+        bins: int,
+        provider: CandidateProvider,
+    ) -> None:
+        """The second pulse holds the note, so its rows go there and the others to the first pulse, each in order."""
+        catalog = catalogs[PULSE]
+        held_key = catalog.key(catalog.rows_by_instruction[HELD])
+        around = [
+            _tonal(bins, leak=0.0, own=HALF_SHARE, held=None),
+            _tonal(bins, leak=0.0, own=HALF_SHARE, held=held_key),
+        ]
+        hearing = SequenceHearing.of(pulses, catalogs, around, provider)
+        rows = np.array(_rows(catalog, [OTHER, HELD, QUIET, HELD]))
+
+        grouped = rows_by_place(hearing, PULSE, rows)
+
+        assert [(place, positions.tolist()) for place, positions in grouped] == [(0, [0, 2]), (1, [1, 3])]
+        assert not rows_by_place(hearing, PULSE, rows[:0])
 
 
 class TestHearingAFrameOfALine(BaseTestSuite):

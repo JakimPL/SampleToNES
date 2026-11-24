@@ -14,7 +14,7 @@ from .batches import cheapest_row, split_by_group
 from .catalog import KindCatalog, alike_timbres
 from .combinations import CombinationSearch, Rows
 from .continuity import StemContinuity
-from .hearing import FrameHearing
+from .hearing import DrivenFeatures, FrameHearing
 from .layout import StemLayout
 
 FINALISTS: Final[int] = 6
@@ -93,12 +93,12 @@ class CombinationJudge:
     The search ranks combinations by the spectral term, and the judge decides among the cheapest:
 
     1. **Scoring.** Each sounding channel is phased in turn, loudest first by the criterion's
-       weighting, against what the louder ones leave of the frame's waveform, at the drive the stem
-       gives it, since the louder channels shape that residual most. The frame is then scored with
-       all of them sounding, exactly as a column scores one candidate beside a mix. A channel phased
-       once behind the same louder rows keeps its phase for every combination of the frame sharing
-       them. A combination is weighed by its cost and the charge it pays for breaking with the frames
-       beside it.
+       weighting of its row heard alone at the drive the stem gives it (``DrivenFeatures``), against
+       what the louder ones leave of the frame's waveform, since the louder channels shape that
+       residual most. The frame is then scored with all of them sounding, exactly as a column scores
+       one candidate beside a mix. A channel phased once behind the same louder rows keeps its phase
+       for every combination of the frame sharing them. A combination is weighed by its cost and the
+       charge it pays for breaking with the frames beside it.
     2. **Finalists.** The ``FINALISTS`` cheapest by the spectral ranking, and, where the charge binds,
        the combinations the neighbors play, so the frame may hold through what they play.
     3. **The choice.** The finalist weighed lowest, its pulses' duty cycles settled, then thinned,
@@ -115,6 +115,7 @@ class CombinationJudge:
         catalogs: Mapping[GeneratorClassName, KindCatalog],
         matcher: FrameMatcher,
         weights: np.ndarray,
+        driven: DrivenFeatures,
         hearing: FrameHearing,
         continuity: StemContinuity,
     ) -> None:
@@ -123,6 +124,7 @@ class CombinationJudge:
         self.catalogs = catalogs
         self.matcher = matcher
         self.weights = weights
+        self.driven = driven
         self.hearing = hearing
         self.continuity = continuity
         self._phasings: Dict[Phasing, Contribution] = {}
@@ -221,9 +223,13 @@ class CombinationJudge:
         return sorted(loudness, key=loudness.__getitem__, reverse=True)
 
     def _loudness(self, index: int, row: int) -> float:
-        """How loud the channel at ``index`` plays ``row`` at its drive, as the criterion weighs the bins."""
-        slot = self.layout.slots[index]
-        return float(self.catalogs[slot.kind].features[row] @ self.weights) / slot.drive**2
+        """How loud the channel at ``index`` plays ``row`` at its drive, as the criterion weighs the bins.
+
+        It is the weighted feature values of the row heard alone on the channel, its steady loudness
+        at the drive: the phasing works on the frame's own samples, which sound each channel's row at
+        its drive whatever the analysis window reads of the neighbors.
+        """
+        return float(self.driven.at(self.layout.slots[index], [row])[0] @ self.weights)
 
     def _phased(self, phasing: Phasing, mix: FrameMix) -> Contribution:
         """What the last channel of ``phasing`` adds, phased against what ``mix`` leaves of the frame's waveform.

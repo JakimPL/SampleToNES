@@ -4,7 +4,6 @@ from typing import List, Sequence, Tuple
 import numpy as np
 
 from sampletones_core.configs import Config
-from sampletones_core.constants.algorithm import UNIT_DRIVE
 from sampletones_core.fft import Fragment
 from sampletones_core.generators import GeneratorUnion
 from sampletones_core.instructions import InstructionUnion
@@ -12,6 +11,7 @@ from sampletones_shared.array import to_numpy, xp
 
 from .candidates import CandidateProvider, ClassCandidates
 from .contribution import Contribution
+from .drive import driven_powers
 from .mix import FrameMix
 from .phase import PhaseAligner
 from .scorer import Scorer
@@ -125,14 +125,14 @@ class FrameMatcher:
             ValueError: If the library lacks the class's silent instruction.
         """
         candidates = self.candidate_provider.candidates({generator.class_name(): generator})
-        unit_powers = _at_unit_drive(candidates.powers, drive)
-        spectral_costs = self.spectral_costs(target, unit_powers + xp.asarray(mix.power))
+        driven = driven_powers(candidates.powers, drive)
+        spectral_costs = self.spectral_costs(target, driven + xp.asarray(mix.power))
         shortlist = self._shortlist(spectral_costs, candidates, generator)
         request = RowsRequest(
             generator=generator,
             mix=mix,
             rows=tuple(shortlist),
-            powers=np.asarray(to_numpy(unit_powers[xp.asarray(shortlist)]), dtype=np.float64),
+            powers=np.asarray(to_numpy(driven[xp.asarray(shortlist)]), dtype=np.float64),
             drive=drive,
         )
         return self._scored(target, [request], spectral_costs[shortlist])[0]
@@ -164,7 +164,7 @@ class FrameMatcher:
             The candidates with their frame costs, best first, silence ahead of an equal cost.
         """
         candidates = self.candidate_provider.candidates({generator.class_name(): generator})
-        powers = np.asarray(to_numpy(_at_unit_drive(candidates.powers, drive)[xp.asarray(list(rows))]))
+        powers = np.asarray(to_numpy(driven_powers(candidates.powers, drive)[xp.asarray(list(rows))]))
         request = RowsRequest(generator=generator, mix=mix, rows=tuple(rows), powers=powers, drive=drive)
         return self.score_requests(target, [request])[0]
 
@@ -345,14 +345,6 @@ class FrameMatcher:
             shortlist.append(silent_index)
 
         return shortlist
-
-
-def _at_unit_drive(powers: xp.ndarray, drive: float) -> xp.ndarray:
-    """The candidates' powers read at unit drive, which a power divides by the drive's square."""
-    if drive == UNIT_DRIVE:
-        return powers
-
-    return powers / drive**2
 
 
 def column_of(scored: Column, width: int) -> Column:

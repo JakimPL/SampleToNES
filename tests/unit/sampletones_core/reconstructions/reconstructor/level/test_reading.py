@@ -141,7 +141,7 @@ class TestTheTriangleReader:
 
         reading = _read(reader, _frame(config, extractor, {ChannelName.TRIANGLE: BASS}, FULL / DRIVE))
 
-        assert reader.natural == pytest.approx(1.0 / DRIVE**2)
+        assert reader.atoms.caps[reader.triangle] == pytest.approx(reader.natural)
         assert reading.level == pytest.approx(FULL, rel=LEVEL_TOLERANCE)
 
     def test_a_stem_without_the_triangle_has_no_level_to_read(

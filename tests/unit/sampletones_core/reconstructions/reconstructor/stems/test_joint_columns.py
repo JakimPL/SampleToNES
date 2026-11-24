@@ -91,7 +91,14 @@ def _columns_of(
     hearing = heard_alone(layout, catalogs, joint_matcher.candidate_provider, len(fragment.feature.values))
     weights = np.asarray(to_numpy(joint_matcher.scorer.criterion.weights), dtype=np.float64).reshape(-1)
     judge = CombinationJudge(
-        fragment, layout, catalogs, joint_matcher, weights, hearing, StemContinuity.free(layout, catalogs)
+        fragment,
+        layout,
+        catalogs,
+        joint_matcher,
+        weights,
+        hearing.driven,
+        hearing,
+        StemContinuity.free(layout, catalogs),
     )
     played = [LEAD, HARMONY, BASS, SILENT_NOISE]
     rows = tuple(

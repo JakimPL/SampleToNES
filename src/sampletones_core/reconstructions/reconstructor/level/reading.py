@@ -9,9 +9,14 @@ from sampletones_core.fft import Fragment
 from sampletones_core.reconstructions.reconstructor.matching import FrameMatcher
 from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.catalog import KindCatalog
 from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.fit import FitTarget, fitted_levels
+from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.hearing import (
+    DrivenFeatures,
+    SteadyHearing,
+)
 from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.layout import StemLayout
 from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.proposals import (
     FREE_FIT_START,
+    HeardAtoms,
     NoteDictionary,
 )
 
@@ -43,7 +48,7 @@ class TriangleNote:
 
     Attributes:
         note: The note.
-        level: Its fitted level, against its row at unit drive.
+        level: Its fitted level, against its row on the triangle's channel at the stem's drive.
         strength: The power its fitted level sounds, unweighted.
     """
 
@@ -126,22 +131,23 @@ class TriangleReader:
     """Reads a stem's frames for the level a triangle line in them stands at.
 
     All the notes the stem's channels may sound are fitted to a frame at once, the frame heard
-    alone, as the joint assignment's first step fits it (``fitted_levels``), for
-    ``READING_UPDATES`` updates. The triangle is free to sound at up to ``FREE_TRIANGLE_REACH``
-    times its own level, so a triangle line takes the level it stands at in the recording. The
-    triangle notes the fit sounds give the frame's bass (``TriangleRun.bass``), and the bass gives
-    the frame's reading (``TriangleRun.reading``).
+    alone (``SteadyHearing``), as the joint assignment's first step fits it (``fitted_levels``), for
+    ``READING_UPDATES`` updates. Each atom is heard on its channel at the drive the stem gives it,
+    so a triangle atom at a level of one sounds the triangle as the stem plays it. The triangle is
+    free to sound at up to ``FREE_TRIANGLE_REACH`` times its own level, so a triangle line takes the
+    level it stands at in the recording. The triangle notes the fit sounds give the frame's bass
+    (``TriangleRun.bass``), and the bass gives the frame's reading (``TriangleRun.reading``).
 
     Attributes:
-        dictionary: The atoms of every note the stem may sound.
+        atoms: Every note the stem may sound, heard alone on its channel.
         caps: Each atom's highest level, the triangle's raised.
         triangle: Which atoms are triangle notes.
-        natural: The level the stem plays the triangle at, as an atom level: what every triangle
-            channel of the stem sounds at its drive (``StemLayout.gain``).
+        natural: The level the stem plays the triangle at, as a level of its atoms: the cap of a
+            triangle atom, what every triangle channel of the stem sounds at its one level.
         matcher: The matching machinery whose criterion the fit measures with.
     """
 
-    dictionary: NoteDictionary
+    atoms: HeardAtoms
     caps: np.ndarray
     triangle: np.ndarray
     natural: float
@@ -156,22 +162,41 @@ class TriangleReader:
     ) -> Self:
         """The reader of a stem whose channels include the triangle.
 
+        The frame heard alone holds nothing before its rows sound, over the bins of the library's rows.
+
         Raises:
             ValueError: If the stem plays no triangle.
         """
         if not layout.of_kind(TRIANGLE):
             raise ValueError(f"Stem {layout.stem_id} plays no triangle to read a level from")
 
-        dictionary = NoteDictionary.of(layout, catalogs)
-        triangle = np.array([kind == TRIANGLE for kind in dictionary.kinds], dtype=bool)
-        natural = layout.gain(TRIANGLE)
+        hearing = SteadyHearing(
+            layout=layout,
+            catalogs=catalogs,
+            driven=DrivenFeatures.of([layout], catalogs, matcher.candidate_provider),
+            bins=int(catalogs[TRIANGLE].powers.shape[1]),
+        )
+        atoms = NoteDictionary.of(layout, catalogs).heard(hearing)
+        triangle = np.array([kind == TRIANGLE for kind in atoms.kinds], dtype=bool)
+        natural = cls._natural(layout)
         return cls(
-            dictionary=dictionary,
-            caps=np.where(triangle, FREE_TRIANGLE_REACH * natural, dictionary.caps),
+            atoms=atoms,
+            caps=np.where(triangle, FREE_TRIANGLE_REACH * natural, atoms.caps),
             triangle=triangle,
             natural=natural,
             matcher=matcher,
         )
+
+    @staticmethod
+    def _natural(layout: StemLayout) -> float:
+        """The cap of a triangle atom heard alone: the level every triangle channel of the stem sounds it at.
+
+        The triangle sounds one level, which reads as full volume, a level of one against its one
+        row. A frame heard alone hears every triangle row on the stem's first triangle channel
+        (``SteadyHearing.place_of``), so a triangle atom's cap is that channel's gain
+        (``StemLayout.gain``).
+        """
+        return layout.gain(layout.places_of(TRIANGLE)[0])
 
     def read(self, fragment: Fragment) -> Optional[FrameReading]:
         """Where one frame's bass stands against the triangle's level, ``None`` where no triangle run holds it.
@@ -179,7 +204,7 @@ class TriangleReader:
         A fit sounding nothing holds no bass.
         """
         levels = self._fitted(fragment)
-        strengths = levels * self.dictionary.powers
+        strengths = levels * self.atoms.powers
         total = float(strengths.sum())
         if total <= 0.0:
             return None
@@ -195,7 +220,7 @@ class TriangleReader:
         target = FitTarget.of(fragment, self.matcher.scorer.criterion)
         return fitted_levels(
             target,
-            self.dictionary.features,
+            self.atoms.features,
             self.caps,
             base=np.zeros_like(target.reference),
             start=FREE_FIT_START,
@@ -209,8 +234,6 @@ class TriangleReader:
         a kind's notes ascending.
         """
         return [
-            TriangleNote(
-                note=int(self.dictionary.notes[atom]), level=float(levels[atom]), strength=float(strengths[atom])
-            )
+            TriangleNote(note=int(self.atoms.notes[atom]), level=float(levels[atom]), strength=float(strengths[atom]))
             for atom in np.flatnonzero(self.triangle)
         ]

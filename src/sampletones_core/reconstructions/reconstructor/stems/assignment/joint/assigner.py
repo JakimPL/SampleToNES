@@ -26,7 +26,7 @@ from .fit import FitTarget
 from .hearing import DrivenFeatures, FrameHearing, SequenceHearing, SteadyHearing, library_powers
 from .layout import StemLayout, separate_layouts
 from .pool import resting_pool, sounding_pool
-from .proposals import NoteDictionary, proposed_rows
+from .proposals import HeardAtoms, NoteDictionary, proposed_rows
 
 UNVOICED_DISTANCE: Final[float] = 24.0
 
@@ -144,7 +144,8 @@ class JointAssigner:
 
         Each kind's rows are read once for the recording: as the joint assignment names them, and in
         feature values at every drive the stems give the kind's channels. Each stem holding a channel
-        has its note dictionary.
+        has its note dictionary. The fit of every note hears a stem's atoms alone in every frame, alike
+        in each, so the first frame hears them for the recording (``steady_atoms``).
 
         Raises:
             ValueError: If a stem allows a channel the run has no generator for, or two stems may
@@ -162,6 +163,7 @@ class JointAssigner:
         }
         self.weights = np.asarray(to_numpy(matcher.scorer.criterion.weights), dtype=np.float64).reshape(-1)
         self.previous: Dict[int, Optional[Rows]] = {layout.stem_id: None for layout in self.layouts}
+        self.steady_atoms: Dict[int, HeardAtoms] = {}
 
     def assign(self, fragments: Dict[int, Fragment]) -> StemFrameAssignment:
         """Assigns one frame heard alone: every sounding stem's channels from its own frame, the rest resting.
@@ -172,13 +174,10 @@ class JointAssigner:
         Returns:
             The channels each stem holds, the channels left resting and every stem's pool.
         """
-        bins = len(next(iter(fragments.values())).feature.values)
+        bins = self._bins(fragments)
         return self._assigned(
             fragments,
-            {
-                layout.stem_id: SteadyHearing(layout=layout, catalogs=self.catalogs, driven=self.driven, bins=bins)
-                for layout in self.layouts
-            },
+            {layout.stem_id: self._alone(layout, bins) for layout in self.layouts},
             {layout.stem_id: StemContinuity.free(layout, self.catalogs) for layout in self.layouts},
         )
 
@@ -254,6 +253,23 @@ class JointAssigner:
                     catalog.instructions[row],
                 )
 
+    def _heard_alone(self, bins: int) -> Dict[int, HeardAtoms]:
+        """Every stem's atoms as a frame heard alone hears them, heard by the first frame for the recording."""
+        for layout in self.layouts:
+            if layout.stem_id in self.dictionaries and layout.stem_id not in self.steady_atoms:
+                self.steady_atoms[layout.stem_id] = self.dictionaries[layout.stem_id].heard(self._alone(layout, bins))
+
+        return self.steady_atoms
+
+    def _alone(self, layout: StemLayout, bins: int) -> SteadyHearing:
+        """A frame of ``layout``'s stem heard alone, over ``bins`` bins."""
+        return SteadyHearing(layout=layout, catalogs=self.catalogs, driven=self.driven, bins=bins)
+
+    @staticmethod
+    def _bins(fragments: Mapping[int, Fragment]) -> int:
+        """How many bins the frame's feature holds, the same for every stem."""
+        return len(next(iter(fragments.values())).feature.values)
+
     def _assigned(
         self,
         fragments: Dict[int, Fragment],
@@ -262,9 +278,11 @@ class JointAssigner:
     ) -> StemFrameAssignment:
         """Assigns one frame, each sounding stem's frame heard as ``hearings`` hears it and kept to ``continuities``.
 
-        The channels left resting stand in channel order.
+        The fit of every note hears each stem's atoms alone (``steady_atoms``). The channels left
+        resting stand in channel order.
         """
         sounding = sounding_stems(fragments)
+        atoms = self._heard_alone(self._bins(fragments))
         answers: List[StemAnswer] = []
         for layout in self.layouts:
             if not layout.slots:
@@ -273,7 +291,9 @@ class JointAssigner:
             fragment = fragments[layout.stem_id]
             if layout.stem_id in sounding:
                 answers.append(
-                    self._sounding_stem(layout, fragment, hearings[layout.stem_id], continuities[layout.stem_id])
+                    self._sounding_stem(
+                        layout, fragment, hearings[layout.stem_id], atoms[layout.stem_id], continuities[layout.stem_id]
+                    )
                 )
             else:
                 answers.append(self._silent_stem(layout, fragment))
@@ -296,15 +316,20 @@ class JointAssigner:
         )
 
     def _sounding_stem(
-        self, layout: StemLayout, fragment: Fragment, hearing: FrameHearing, continuity: StemContinuity
+        self,
+        layout: StemLayout,
+        fragment: Fragment,
+        hearing: FrameHearing,
+        atoms: HeardAtoms,
+        continuity: StemContinuity,
     ) -> StemAnswer:
         """One sounding stem's frame: the judge's choice, the channels it holds with their columns, and its pool."""
         target = FitTarget.of(fragment, self.matcher.scorer.criterion)
-        proposals = proposed_rows(
-            fragment, target, layout, self.dictionaries[layout.stem_id], self.catalogs, self.matcher, hearing
-        )
+        proposals = proposed_rows(fragment, target, layout, atoms, self.catalogs, self.matcher, hearing)
         search = CombinationSearch(fragment, target, layout, self.catalogs, self.matcher, hearing)
-        judge = CombinationJudge(fragment, layout, self.catalogs, self.matcher, self.weights, hearing, continuity)
+        judge = CombinationJudge(
+            fragment, layout, self.catalogs, self.matcher, self.weights, self.driven, hearing, continuity
+        )
         finalists = judge.finalists([combination.rows for combination in search.refined(search.fitted(proposals))])
         previous = self.previous[layout.stem_id]
         winner = self._handed_over(layout, judge.best(search, finalists), previous)
