@@ -37,15 +37,16 @@ PulseNotes = Tuple[Optional[int], ...]
 class PulseHandover:
     """Hands a frame's pulse notes to the stem's pulse channels, so a line a pulse holds stays on its channel.
 
-    Pulses the stem drives alike sound the same on either channel, so the winner may stand in any
-    order of them. The handover keeps the order moving the pulses least from the notes they played
-    the frame before: a pulse moves by the semitones between its two notes, and a pulse starting or
-    falling silent moves ``UNVOICED_DISTANCE`` semitones. With no frame before, a sounding pulse
-    stands as early in the layout as it can. Of orders moving alike, the earlier in
-    ``StemLayout.pulse_orders`` stands, the winner's own order first.
+    Pulses in one group, which the stem drives alike, sound the same on any of its channels, so the
+    winner may stand in any order within each group (``StemLayout.orders``). The handover keeps the
+    order moving the pulses least from the notes they played the frame before: a pulse moves by the
+    semitones between its two notes, and a pulse starting or falling silent moves
+    ``UNVOICED_DISTANCE`` semitones. With no frame before, a sounding pulse stands as early in the
+    layout as it can. Of orders moving alike, the earlier in ``StemLayout.orders`` stands, the
+    winner's own order first.
 
     Attributes:
-        layout: The stem's channels, whose pulses are interchangeable.
+        layout: The stem's channels, two or more of whose pulses share a group.
         catalog: The pulse rows.
     """
 
@@ -60,8 +61,8 @@ class PulseHandover:
         return arrangements[moves.index(min(moves))]
 
     def _arrangements(self, winner: ScoredCombination) -> List[ScoredCombination]:
-        """``winner`` in every order of its interchangeable pulses, each row moving with what it adds, its own first."""
-        orders = zip(self.layout.pulse_orders(winner.rows), self.layout.pulse_orders(winner.contributions))
+        """``winner`` in every order within each group, each row moving with what it adds, its own first."""
+        orders = zip(self.layout.orders(winner.rows), self.layout.orders(winner.contributions))
         return [replace(winner, rows=rows, contributions=contributions) for rows, contributions in orders]
 
     @staticmethod
@@ -84,8 +85,9 @@ class PulseHandover:
         return total
 
     def _notes(self, rows: Rows) -> PulseNotes:
-        """The note each interchangeable pulse plays in ``rows``, ``None`` for a silent one."""
-        return tuple(self.catalog.note_name(rows[place]) for place in self.layout.interchangeable_pulses)
+        """The note each of the stem's pulses plays in ``rows``, in layout order, ``None`` for a silent one."""
+        pulses = self.layout.places_of(GeneratorClassName.PULSE_GENERATOR)
+        return tuple(self.catalog.note_name(rows[place]) for place in pulses)
 
 
 @dataclass(frozen=True)
@@ -121,10 +123,10 @@ class JointAssigner:
        combinations a decoder over combinations reads (``CombinationJudge.pooled``, ``sounding_pool``).
 
     Every decision between notes compares complete mixes, so a note that only covers other notes'
-    partials loses to the notes themselves. The pulses are handed to the channels that keep each
-    nearest the note it played the frame before (``PulseHandover``), so a held line stays on its
-    channel. The assigner remembers each stem's previous choice for that and for the pool, and a
-    frame the stem leaves silent clears it.
+    partials loses to the notes themselves. Pulses the stem drives alike are handed to the channels
+    that keep each nearest the note it played the frame before (``PulseHandover``), so a held line
+    stays on its channel. The assigner remembers each stem's previous choice for that and for the
+    pool, and a frame the stem leaves silent clears it.
 
     A frame is first heard alone, each note as if held through the whole analysis window. Once the
     recording is decoded, a frame may be assigned again among the notes its neighbors play
@@ -351,8 +353,11 @@ class JointAssigner:
     def _handed_over(
         self, layout: StemLayout, winner: ScoredCombination, previous: Optional[Rows]
     ) -> ScoredCombination:
-        """The winner with its pulses handed to their channels, where the stem's pulses are interchangeable."""
-        if not layout.interchangeable_pulses:
+        """The winner with its pulses handed to their channels, where two or more of them share a group.
+
+        Only pulses come two to a stem, so a group shared by two or more channels is a group of pulses.
+        """
+        if not layout.shared_groups:
             return winner
 
         return PulseHandover(layout=layout, catalog=self.catalogs[GeneratorClassName.PULSE_GENERATOR]).ordered(
@@ -363,7 +368,11 @@ class JointAssigner:
         """The places of the channels the stem holds, in layout order.
 
         These are the channels the winner sounds, then its silent ones in layout order up to the
-        stem's count.
+        stem's count. Layout order fills each group's silent channels lowest first, as the channels
+        of a group fill (``StemLayout``), and reaches the groups in the order of their lowest
+        channels. A group holds two channels only where the stem drives both pulses alike, so a
+        stem driving them unlike reaches each pulse's group before the triangle's and the noise's,
+        and one driving them alike holds its second pulse before them.
         """
         sounding = [
             index

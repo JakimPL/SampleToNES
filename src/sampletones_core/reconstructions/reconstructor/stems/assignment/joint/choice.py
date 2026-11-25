@@ -180,10 +180,11 @@ class CombinationJudge:
         channel at a time can. It holds the finalists, each also with one of its channels silenced, and
         the previous frame's winner, so a path can hold the combination the frame before sounded through
         a change. Every combination is scored under the full criterion and reads once, whatever order
-        its pulses stand in, as it was first pooled: the winner, then the finalists, then the others.
+        its rows stand in within each group of the stem's channels, as it was first pooled: the
+        winner, then the finalists, then the others.
 
         Args:
-            search: The frame's combination search, which knows the stem's interchangeable pulses.
+            search: The frame's combination search, which reads a combination in one order within each group.
             finalists: The frame's finalists, scored.
             winner: The combination the frame's search chose.
             previous: The combination the stem's previous frame chose, or ``None`` after a rest.
@@ -365,7 +366,7 @@ class CombinationJudge:
     def _unpooled(
         search: CombinationSearch, trials: Sequence[Rows], pool: Mapping[Rows, ScoredCombination]
     ) -> List[Rows]:
-        """``trials`` in the order of their pulses that reads once, each once, leaving those ``pool`` already holds."""
+        """``trials`` in the one order they read in within each group, each once, leaving those ``pool`` holds."""
         return list(dict.fromkeys(rows for rows in map(search.canonical, trials) if rows not in pool))
 
     def _sounding(self, rows: Rows) -> List[int]:

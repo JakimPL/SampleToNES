@@ -305,7 +305,10 @@ assignment reads the frame in four steps:
    true notes explain the same bins with nothing left over. The strongest notes of each kind become the
    frame's proposals: eight pulse notes, four triangle notes and three noise shapes.
 2. **Fit every combination.** Every combination of the proposals the source may sound together is fitted
-   the same way: the pulse and noise levels free, the triangle at its one level. The combinations fitting
+   the same way: the pulse and noise levels free, the triangle at its one level. A combination places each
+   proposal on a channel of its kind. Channels the source drives alike stand in for each other, so a set
+   of proposals sounds on them once, and every placement over channels it drives apart is fitted
+   ([stems](stems.md#10-channels-driven-alike-stand-in-for-each-other)). The combinations fitting
    best move onto the library's rows, one channel at a time over every volume and duty cycle of its note.
 3. **Let the full criterion choose.** The cheapest combinations are scored with the full criterion, each
    channel phased against what the louder ones leave of the waveform. The spectral ranking favors a quiet
@@ -327,9 +330,9 @@ reach what every channel of its kind plays at full volume. A note's strength is 
 heard alone. The full criterion phases the channels by how loud each plays its row heard alone at its
 drive.
 
-The two pulses go to the channels that keep each nearest the note it played a frame before, so a held
-line stays on its channel. Every source is solved on its own channels, so the joint assignment needs
-each channel held by one source.
+Where the source drives its two pulses alike, they go to the channels that keep each nearest the note it
+played a frame before, so a held line stays on its channel. Every source is solved on its own channels,
+so the joint assignment needs each channel held by one source.
 
 The joint assignment also hands every source a **pool** of whole combinations per frame, which the
 [combinations decoder](#55-decoding-whole-combinations) reads. The pool holds the choice with every set of

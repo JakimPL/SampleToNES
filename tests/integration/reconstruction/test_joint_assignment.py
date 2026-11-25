@@ -36,6 +36,9 @@ CHORD: Final[Dict[ChannelName, InstructionUnion]] = {
 HELD: Final[range] = range(EDGE_FRAMES, FRAMES - EDGE_FRAMES)
 NEIGHBOR_PASSES: Final[int] = 1
 TONAL_INERTIA: Final[float] = 0.5
+LOUDER_DRIVE: Final[float] = 2.0
+PULSES: Final[List[ChannelName]] = [ChannelName.PULSE1, ChannelName.PULSE2]
+FULL: Final[PulseInstruction] = PulseInstruction(on=True, pitch=64, volume=15, duty_cycle=2)
 
 
 def _kept(instruction: InstructionUnion) -> bool:
@@ -225,6 +228,39 @@ class TestAJointConversionOfALoneNote:
             sounding = list(_sounding(reconstruction, frame).values())
             right += (
                 len(sounding) == 1 and isinstance(sounding[0], PulseInstruction) and sounding[0].pitch == LEAD.pitch
+            )
+
+        assert right >= RIGHT_SHARE * len(HELD)
+
+
+class TestAJointConversionOfANoteOnPulsesDrivenApart:
+    """A stem sounding one of the pulses, the first at drive two and the second at unit drive, converts a loud note.
+
+    The working level brings the note to what a pulse plays at full volume. The first pulse reads every
+    row at a quarter of its power, so even its loudest row falls short of the note, which the second
+    pulse plays at the note's own volume. The pulses stand in groups of their own, so the search
+    places the note on either.
+    """
+
+    def test_the_note_plays_on_the_second_pulse_alone_at_its_own_volume(
+        self, tmp_path_factory: pytest.TempPathFactory, library: InstructionLibrary
+    ) -> None:
+        reconstruction = _converted(
+            tmp_path_factory.mktemp("apart"),
+            library,
+            {ChannelName.PULSE1: FULL},
+            StemSettings(channels=PULSES, bends=[], drives={ChannelName.PULSE1: LOUDER_DRIVE}, channel_cap=1),
+            _joint_config(),
+        )
+
+        right = 0
+        for frame in HELD:
+            sounding = _sounding(reconstruction, frame)
+            played = sounding.get(ChannelName.PULSE2)
+            right += (
+                list(sounding) == [ChannelName.PULSE2]
+                and isinstance(played, PulseInstruction)
+                and (played.pitch, played.volume) == (FULL.pitch, FULL.volume)
             )
 
         assert right >= RIGHT_SHARE * len(HELD)

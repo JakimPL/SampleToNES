@@ -26,15 +26,16 @@ def sounding_pool(
     columns: Mapping[int, Column],
     catalogs: Mapping[GeneratorClassName, KindCatalog],
 ) -> StemPool:
-    """The stem's pool in a sounding frame: its combinations, the choice moved one channel at a time, both pulse orders.
+    """The stem's pool in a sounding frame: its combinations, the choice moved one channel at a time, every order.
 
     A column scores each of its channel's alternatives at the full cost of the frame with the other
     channels playing the choice, which is the cost of the choice with that one channel moved. So the
     pool holds every alternative of every column as such a combination, and a path may take any move
     a decoder of one channel at a time could. A pulse line keeps to its channel across frames only where
-    the path may take either order, so each combination also stands in every order its pulses sound the
-    same in. A combination reads once, by what its channels play, at the cost it was first pooled with:
-    the frame's combinations in their order, then the moves column by column.
+    the path may take either order, so each combination also stands in every order within each group of
+    the stem's channels, which sound the same (``StemLayout.orders``). A combination reads once, by what
+    its channels play, at the cost it was first pooled with: the frame's combinations in their order,
+    then the moves column by column.
 
     Args:
         fragment: The stem's frame.
@@ -50,7 +51,7 @@ def sounding_pool(
     pooled = [_pooled(layout, combination, catalogs, silence) for combination in combinations]
     arranged: Dict[Played, PooledCombination] = {}
     for combination in [*pooled, *_moved(pooled[0], columns)]:
-        for candidates in layout.pulse_orders(combination.candidates):
+        for candidates in layout.orders(combination.candidates):
             ordered = replace(combination, candidates=candidates)
             arranged.setdefault(_played(ordered), ordered)
 

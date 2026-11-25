@@ -12,7 +12,7 @@ from .batches import cheapest_row, split_by_group
 from .catalog import KindCatalog, UnitRow
 from .fit import FitTarget, fitted_combinations
 from .hearing import FrameHearing, heard_features
-from .layout import StemLayout
+from .layout import ChannelGroup, StemLayout
 
 FIRST_UPDATES: Final[int] = 5
 FURTHER_UPDATES: Final[int] = 15
@@ -24,6 +24,7 @@ SILENT_ENTRY: Final[int] = 0
 
 Rows = Tuple[int, ...]
 Choice = Tuple[Optional[int], ...]
+Placement = Dict[int, int]
 
 
 @dataclass(frozen=True)
@@ -44,13 +45,16 @@ def searched_choices(layout: StemLayout, proposals: Mapping[GeneratorClassName, 
     """Every choice of proposals the stem may sound together: a proposal or silence on each of its channels.
 
     A kind sounds every set of its proposals up to as many as it has channels: none first, then each
-    proposal alone, then every pair, each set in proposal order. A set's proposals go to the kind's
-    channels in layout order, and the channels left over fall silent, so pulses driven alike sound
-    each set once. The kinds' sets are crossed in kind name order, the first kind's sets varying
-    slowest, and a choice is kept where it sounds at most the stem's count of channels.
+    proposal alone, then every pair, each set in proposal order. A set sounds in every placement over
+    the kind's groups of channels (``StemLayout.groups``), since a row sounds at each group's own
+    level: each proposal goes to a group with a channel left for it, and a group's proposals take its
+    lowest channels in proposal order, so channels driven alike sound each set once. The kinds'
+    placements are crossed in kind name order, the first kind's varying slowest, and a choice is kept
+    where it sounds at most the stem's count of channels.
 
     The search keeps this order among choices of equal cost: a kind's silence before its sets that
-    sound, smaller sets before larger ones, and the stronger proposals first.
+    sound, smaller sets before larger ones, the stronger proposals first, and of one set's placements,
+    the one sounding its stronger proposals in the earlier groups first.
 
     Args:
         layout: The stem's channels.
@@ -60,25 +64,60 @@ def searched_choices(layout: StemLayout, proposals: Mapping[GeneratorClassName, 
         The choices, each one entry per channel in layout order, ``None`` for silence.
     """
     kinds = sorted(layout.kinds)
-    sets = [_proposal_sets(proposals.get(kind, ()), len(layout.of_kind(kind))) for kind in kinds]
-    choices = [_placed(layout, dict(zip(kinds, picked))) for picked in itertools.product(*sets)]
+    placements = [_placements(proposals.get(kind, ()), layout.groups_of(kind)) for kind in kinds]
+    choices = [_placed(layout, picked) for picked in itertools.product(*placements)]
     return [choice for choice in choices if _sounding(choice) <= layout.cap]
 
 
-def _proposal_sets(offered: Sequence[int], channels: int) -> List[Choice]:
-    """Every set of ``offered`` up to ``channels`` large, smaller first, each padded with silence to ``channels``."""
-    sets: List[Choice] = [(None,) * channels]
+def _placements(offered: Sequence[int], groups: Sequence[ChannelGroup]) -> List[Placement]:
+    """Every set of ``offered`` up to as many as ``groups`` hold channels, smaller first, each in every placement.
+
+    Silence, the empty set, places no row.
+    """
+    channels = sum(len(group.places) for group in groups)
+    placements: List[Placement] = [{}]
     for sounding in range(1, channels + 1):
         for picked in itertools.combinations([int(row) for row in offered], sounding):
-            sets.append((*picked, *([None] * (channels - sounding))))
+            placements.extend(_spread(picked, groups))
 
-    return sets
+    return placements
 
 
-def _placed(layout: StemLayout, picked: Mapping[GeneratorClassName, Choice]) -> Choice:
-    """Each kind's ``picked`` set on the kind's channels, in layout order."""
-    left = {kind: list(rows) for kind, rows in picked.items()}
-    return tuple(left[slot.kind].pop(0) for slot in layout.slots)
+def _spread(picked: Sequence[int], groups: Sequence[ChannelGroup]) -> List[Placement]:
+    """Every placement of ``picked`` over ``groups``, each proposal in one group, no group past its channels.
+
+    The placements follow the groups the proposals go to, read as digits: the first proposal's
+    group varies slowest, and the earlier groups come first.
+    """
+    spread: List[Placement] = []
+    for targets in itertools.product(range(len(groups)), repeat=len(picked)):
+        placement = _filled(picked, targets, groups)
+        if placement is not None:
+            spread.append(placement)
+
+    return spread
+
+
+def _filled(picked: Sequence[int], targets: Sequence[int], groups: Sequence[ChannelGroup]) -> Optional[Placement]:
+    """``picked`` in the groups ``targets`` names, each group's proposals on its lowest channels in proposal order.
+
+    Returns ``None`` where ``targets`` names a group more often than it holds channels.
+    """
+    placement: Placement = {}
+    for index, group in enumerate(groups):
+        rows = [row for row, target in zip(picked, targets) if target == index]
+        if len(rows) > len(group.places):
+            return None
+
+        placement.update(zip(group.places, rows))
+
+    return placement
+
+
+def _placed(layout: StemLayout, placements: Sequence[Placement]) -> Choice:
+    """The kinds' ``placements`` together on the stem's channels, silence on every channel none of them places."""
+    placed = {place: row for placement in placements for place, row in placement.items()}
+    return tuple(placed.get(place) for place in range(len(layout.slots)))
 
 
 def _sounding(choice: Choice) -> int:
@@ -91,9 +130,9 @@ class ChannelUnits:
     """What one fitted channel may play across a frame's choices: its silence, or a proposal's unit at a level.
 
     A proposal's unit is the unit row of its note and timbre, heard as the frame's fit reads it on
-    the channel, so a level of one sounds the unit row. The level starts at the proposal's own volume
-    and rises at most to full volume. The channel's silence is ``SILENT_ENTRY``, a unit of no power
-    held at level zero.
+    the channel, so a level of one sounds the unit row. The level starts where the channel sounds the
+    proposal as the frame first heard it (``_start``) and rises at most to full volume. The channel's
+    silence is ``SILENT_ENTRY``, a unit of no power held at level zero.
 
     Attributes:
         place: The channel's place in the layout.
@@ -114,7 +153,15 @@ class ChannelUnits:
     starts: np.ndarray
 
     @classmethod
-    def of(cls, choices: Sequence[Choice], place: int, catalog: KindCatalog, hearing: FrameHearing, bins: int) -> Self:
+    def of(
+        cls,
+        choices: Sequence[Choice],
+        place: int,
+        layout: StemLayout,
+        catalog: KindCatalog,
+        hearing: FrameHearing,
+        bins: int,
+    ) -> Self:
         """The units of the channel at ``place`` across ``choices``, each proposal an entry in row order."""
         played = [choice[place] for choice in choices]
         offered = sorted({row for row in played if row is not None})
@@ -129,8 +176,28 @@ class ChannelUnits:
             features=np.concatenate([silence, hearing.unit_features(place, unit_rows)]),
             powers=np.concatenate([silence, hearing.unit_powers(place, unit_rows)]),
             caps=np.array([0.0, *(unit.full_level for unit in units)]),
-            starts=np.array([0.0, *(unit.level_of(catalog.sounding_volume(row)) for row, unit in zip(offered, units))]),
+            starts=np.array(
+                [0.0, *(cls._start(place, layout, catalog, hearing, row, unit) for row, unit in zip(offered, units))]
+            ),
         )
+
+    @staticmethod
+    def _start(
+        place: int, layout: StemLayout, catalog: KindCatalog, hearing: FrameHearing, row: int, unit: UnitRow
+    ) -> float:
+        """The level at which the channel at ``place`` sounds the proposal ``row`` as the frame first heard it.
+
+        A proposal is its note's row fitting the frame best on the channel the frame's hearing places
+        it on (``FrameHearing.place_of``), so its volume is how loud the frame holds the note at that
+        channel's drive. The channel at ``place`` sounds the note as loud at the proposal's own level
+        times its level relative to that channel (``StemLayout.relative_level``): one within a group,
+        the ratio of the squared drives across groups. The fit of every choice placing the proposal
+        thus starts from what the frame was heard to hold, whichever group the choice places it in.
+        The start stands at most at full volume, the highest level the fit reaches.
+        """
+        heard = hearing.place_of(catalog.kind, row)
+        level = unit.level_of(catalog.sounding_volume(row)) * layout.relative_level(place, heard)
+        return min(level, unit.full_level)
 
 
 @dataclass(frozen=True)
@@ -211,10 +278,12 @@ class CombinationSearch:
     its proposal's note and timbre, and the triangle sounds its one level. The best fits move onto
     the library's rows nearest their levels, and then one channel at a time onto the row of its note
     that fits best with the others sounding. Every comparison ranks complete mixes, each as the
-    frame's hearing adds its rows up, by the spectral term. Two orders of pulses driven alike sound
-    the same, so a combination reads once in either.
+    frame's hearing adds its rows up, by the spectral term. Every order of rows within a group of the
+    stem's channels sounds the same (``StemLayout.orders``), so a combination reads once in any of
+    them.
 
-    The search also scores combinations for the judge: their spectral cost and their pulses' one order.
+    The search also scores combinations for the judge: their spectral cost and their rows' one order
+    within each group.
     """
 
     def __init__(
@@ -247,7 +316,7 @@ class CombinationSearch:
         """
         choices = searched_choices(self.layout, proposals)
         channels = [
-            ChannelUnits.of(choices, place, self.catalogs[slot.kind], self.hearing, self._bins)
+            ChannelUnits.of(choices, place, self.layout, self.catalogs[slot.kind], self.hearing, self._bins)
             for place, slot in enumerate(self.layout.slots)
             if slot.plays_levels
         ]
@@ -295,13 +364,16 @@ class CombinationSearch:
         return self.matcher.spectral_costs(self.fragment, powers)
 
     def canonical(self, rows: Rows) -> Rows:
-        """The rows with the pulses in one order wherever the two are driven alike, so one sound reads once."""
-        pulses = self.layout.interchangeable_pulses
-        if len(pulses) != 2:
-            return rows
+        """The rows in one order within each group of the stem's channels, so one sound reads once.
 
+        Every order of a group's rows sounds the same (``StemLayout.orders``), and their ascending
+        order stands for all of them.
+        """
         ordered = list(rows)
-        ordered[pulses[0]], ordered[pulses[1]] = sorted(rows[place] for place in pulses)
+        for group in self.layout.shared_groups:
+            for place, row in zip(group.places, sorted(rows[place] for place in group.places)):
+                ordered[place] = row
+
         return tuple(ordered)
 
     def fixed_parts(self, choices: Sequence[Choice]) -> Tuple[np.ndarray, np.ndarray]:

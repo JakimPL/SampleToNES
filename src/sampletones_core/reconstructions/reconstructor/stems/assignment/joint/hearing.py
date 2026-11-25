@@ -63,7 +63,11 @@ class FrameHearing(Protocol):
         """The feature values of ``unit_powers``."""
 
     def place_of(self, kind: GeneratorClassName, row: int) -> int:
-        """The place of the channel of ``kind`` a proposal of ``row`` is heard on, before a choice places it."""
+        """The place of the channel of ``kind`` a proposal of ``row`` is heard on, before a choice places it.
+
+        A choice may then place the proposal in any group of the kind's channels, each sounding it at
+        its own level (``StemLayout.relative_level``).
+        """
 
     def empty_mix(self, fragment: Fragment) -> FrameMix:
         """The mix of no rows, holding what the frame holds before its rows sound."""
@@ -149,8 +153,14 @@ class SteadyHearing:
         return self.driven.at(self.layout.slots[place], rows)
 
     def place_of(self, kind: GeneratorClassName, row: int) -> int:  # pylint: disable=unused-argument
-        """The first channel of ``kind``: a frame heard alone joins no held note, so it hears every row there."""
-        return _places(self.layout, kind)[0]
+        """The channel a proposal of ``kind`` sounding alone fills first (``StemLayout.first_place``).
+
+        A frame heard alone joins no held note, so it hears a row alike on every channel of a group,
+        and on another group's channels at their level relative to it (``StemLayout.relative_level``).
+        It hears every proposal on the lowest channel of the kind's first group, where a choice
+        sounding the proposal alone places it first.
+        """
+        return self.layout.first_place(kind)
 
     def empty_mix(self, fragment: Fragment) -> FrameMix:
         return FrameMix.empty(fragment)
@@ -220,15 +230,15 @@ class SequenceHearing:
         return heard_features(self.provider, self.unit_powers(place, rows))
 
     def place_of(self, kind: GeneratorClassName, row: int) -> int:
-        """The channel of ``kind`` whose held note ``row`` extends, the first of the kind where none does.
+        """The channel of ``kind`` whose held note ``row`` extends, else the one the row sounding alone fills first.
 
         A row extending a channel's held note reaches the frame joined with it on that channel
-        alone. Where several channels hold the note, the first of them hears it.
+        alone. Where several channels hold the note, the first of them hears it. A row extending no
+        held note is heard where a frame heard alone hears it (``StemLayout.first_place``).
         """
-        places = _places(self.layout, kind)
         key = self.catalogs[kind].key(row)
-        extending = [place for place in places if self.surroundings[place].extends(key)]
-        return (extending or places)[0]
+        extending = [place for place in self.layout.places_of(kind) if self.surroundings[place].extends(key)]
+        return extending[0] if extending else self.layout.first_place(kind)
 
     def empty_mix(self, fragment: Fragment) -> FrameMix:
         """The mix of no rows, its power the leak.
@@ -272,8 +282,3 @@ def rows_by_place(hearing: FrameHearing, kind: GeneratorClassName, rows: np.ndar
     """
     places = np.array([hearing.place_of(kind, int(row)) for row in rows], dtype=np.int64)
     return [(int(place), np.flatnonzero(places == place)) for place in np.unique(places)]
-
-
-def _places(layout: StemLayout, kind: GeneratorClassName) -> List[int]:
-    """The places in the layout of the stem's channels of ``kind``, in channel order."""
-    return [place for place, slot in enumerate(layout.slots) if slot.kind == kind]

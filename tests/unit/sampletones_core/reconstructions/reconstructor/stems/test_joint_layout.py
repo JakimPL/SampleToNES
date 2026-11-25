@@ -1,4 +1,4 @@
-from typing import Dict, Final, List
+from typing import Dict, Final, List, Tuple
 
 import pytest
 
@@ -6,6 +6,7 @@ from sampletones_core.constants.algorithm import UNIT_DRIVE
 from sampletones_core.constants.enums import ChannelName, GeneratorClassName, HierarchyMode, bending_channels
 from sampletones_core.generators import GeneratorUnion
 from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.layout import (
+    ChannelGroup,
     Slot,
     StemLayout,
     separate_layouts,
@@ -88,7 +89,7 @@ class TestStemLayout(BaseTestSuite):
         (layout,) = separate_layouts(_stems({0: [ChannelName.PULSE1]}, channel_cap=1), all_channels)
 
         assert layout.places_of(PULSE) == (0,)
-        assert layout.interchangeable_pulses == ()
+        assert layout.shared_groups == ()
 
     def test_two_stems_allowing_one_channel_are_refused(self, all_channels: Dict[ChannelName, GeneratorUnion]) -> None:
         stems = _stems({0: [ChannelName.PULSE1, ChannelName.TRIANGLE], 1: [ChannelName.PULSE1]}, channel_cap=1)
@@ -106,20 +107,83 @@ class TestStemLayout(BaseTestSuite):
         assert [slot.channel_name for slot in first.slots] == [ChannelName.PULSE1, ChannelName.TRIANGLE]
         assert [slot.channel_name for slot in second.slots] == [ChannelName.PULSE2]
 
-    def test_pulses_driven_alike_are_interchangeable(self, all_channels: Dict[ChannelName, GeneratorUnion]) -> None:
-        stems = _stems({0: [ChannelName.PULSE1, ChannelName.PULSE2, ChannelName.TRIANGLE]}, channel_cap=3)
 
-        (layout,) = separate_layouts(stems, all_channels)
+def _pulses_at(first: float, second: float) -> StemLayout:
+    """A stem of both pulses, driven at ``first`` and ``second``, and the triangle at unit drive."""
+    slots = (
+        Slot(channel_name=ChannelName.PULSE1, kind=PULSE, drive=first),
+        Slot(channel_name=ChannelName.PULSE2, kind=PULSE, drive=second),
+        Slot(channel_name=ChannelName.TRIANGLE, kind=TRIANGLE, drive=UNIT_DRIVE),
+    )
+    return StemLayout(stem_id=0, slots=slots, cap=len(slots))
 
-        assert layout.interchangeable_pulses == (0, 1)
 
-    def test_pulses_driven_apart_or_alone_are_not_interchangeable(
+def _described(groups: Tuple[ChannelGroup, ...]) -> List[Tuple[GeneratorClassName, float, Tuple[int, ...]]]:
+    return [(group.kind, group.drive, group.places) for group in groups]
+
+
+class TestTheChannelGroups(BaseTestSuite):
+    """A stem's channels fall into groups of one kind at one drive, standing in the order of their lowest channels."""
+
+    def test_channels_of_one_kind_driven_alike_form_one_group(
         self, all_channels: Dict[ChannelName, GeneratorUnion]
     ) -> None:
-        alone = _stems({0: [ChannelName.PULSE1, ChannelName.TRIANGLE]}, channel_cap=2).entries[0]
+        (layout,) = separate_layouts(_stems({0: ChannelName.items()}, channel_cap=4), all_channels)
 
-        assert StemLayout.of(_driven_apart(), all_channels).interchangeable_pulses == ()
-        assert StemLayout.of(alone, all_channels).interchangeable_pulses == ()
+        assert _described(layout.groups) == [
+            (PULSE, UNIT_DRIVE, (0, 1)),
+            (TRIANGLE, UNIT_DRIVE, (2,)),
+            (NOISE, UNIT_DRIVE, (3,)),
+        ]
+        assert _described(layout.shared_groups) == [(PULSE, UNIT_DRIVE, (0, 1))]
+
+    def test_channels_of_one_kind_driven_apart_form_a_group_each(
+        self, all_channels: Dict[ChannelName, GeneratorUnion]
+    ) -> None:
+        layout = StemLayout.of(_driven_apart(), all_channels)
+
+        assert _described(layout.groups) == [
+            (PULSE, LOUDER_DRIVE, (0,)),
+            (PULSE, SOFTER_DRIVE, (1,)),
+            (TRIANGLE, UNIT_DRIVE, (2,)),
+        ]
+        assert layout.shared_groups == ()
+
+    def test_channels_driven_alike_away_from_unit_drive_form_one_group(self) -> None:
+        layout = _pulses_at(LOUDER_DRIVE, LOUDER_DRIVE)
+
+        assert _described(layout.groups_of(PULSE)) == [(PULSE, LOUDER_DRIVE, (0, 1))]
+
+    def test_a_stem_of_no_channel_holds_no_group(self) -> None:
+        assert StemLayout(stem_id=0, slots=(), cap=0).groups == ()
+
+    @pytest.mark.parametrize(
+        "first, second", [(LOUDER_DRIVE, SOFTER_DRIVE), (SOFTER_DRIVE, LOUDER_DRIVE)], ids=["louder", "softer"]
+    )
+    def test_a_kind_fills_the_lowest_channel_of_its_first_group_first(self, first: float, second: float) -> None:
+        layout = _pulses_at(first, second)
+
+        assert layout.first_place(PULSE) == 0
+        assert layout.first_place(TRIANGLE) == 2
+
+
+class TestARelativeLevel(BaseTestSuite):
+    """Two channels sound a row alike at levels in the ratio of their squared drives."""
+
+    def test_channels_of_one_group_sound_a_row_alike_at_one_level(self) -> None:
+        layout = _pulses_at(LOUDER_DRIVE, LOUDER_DRIVE)
+
+        assert layout.relative_level(0, 1) == 1.0
+        assert layout.relative_level(1, 0) == 1.0
+
+    @pytest.mark.parametrize("place, other", [(0, 1), (1, 0)], ids=["louder_against_softer", "softer_against_louder"])
+    def test_across_groups_a_level_scales_by_the_squared_ratio_of_the_drives(self, place: int, other: int) -> None:
+        layout = _pulses_at(LOUDER_DRIVE, SOFTER_DRIVE)
+        drives = [LOUDER_DRIVE, SOFTER_DRIVE]
+
+        heard_there = 1.0 / drives[other] ** 2
+        heard_here = layout.relative_level(place, other) / drives[place] ** 2
+        assert heard_here == pytest.approx(heard_there)
 
 
 class TestAChannelsGain(BaseTestSuite):
@@ -160,8 +224,8 @@ class TestASlotsLevels(BaseTestSuite):
         assert not Slot(channel_name=ChannelName.TRIANGLE, kind=TRIANGLE, drive=UNIT_DRIVE).plays_levels
 
 
-class TestThePulseOrders(BaseTestSuite):
-    """A combination of pulses driven alike sounds the same in either order, so it may be read in both."""
+class TestTheOrdersWithinGroups(BaseTestSuite):
+    """A combination sounds the same in every order of its rows within each group, so it may be read in each."""
 
     def test_pulses_driven_alike_stand_in_both_orders_their_own_first(
         self, all_channels: Dict[ChannelName, GeneratorUnion]
@@ -170,7 +234,7 @@ class TestThePulseOrders(BaseTestSuite):
             _stems({0: [ChannelName.PULSE1, ChannelName.PULSE2, ChannelName.TRIANGLE]}, channel_cap=3), all_channels
         )
 
-        assert layout.pulse_orders(["lead", "harmony", "bass"]) == [
+        assert layout.orders(["lead", "harmony", "bass"]) == [
             ("lead", "harmony", "bass"),
             ("harmony", "lead", "bass"),
         ]
@@ -182,7 +246,7 @@ class TestThePulseOrders(BaseTestSuite):
             _stems({0: [ChannelName.PULSE1, ChannelName.TRIANGLE]}, channel_cap=2).entries[0], all_channels
         )
 
-        assert StemLayout.of(_driven_apart(), all_channels).pulse_orders(["lead", "harmony", "bass"]) == [
+        assert StemLayout.of(_driven_apart(), all_channels).orders(["lead", "harmony", "bass"]) == [
             ("lead", "harmony", "bass")
         ]
-        assert alone.pulse_orders(["lead", "bass"]) == [("lead", "bass")]
+        assert alone.orders(["lead", "bass"]) == [("lead", "bass")]

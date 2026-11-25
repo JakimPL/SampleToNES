@@ -67,10 +67,10 @@ class ChannelContinuity:
 class StemContinuity:
     """What a stem's channels play beside a frame, and what each combination pays to break with it.
 
-    A combination pays what its channels' charges add up to. Pulses the stem drives alike sound the
-    same on either channel, so a combination pays for the order of its pulses that breaks least. A
-    channel with no continuity chooses freely and pays nothing, and a stem whose channels all choose
-    freely, as a frame heard alone does, leaves every cost as the criterion reads it.
+    A combination pays what its channels' charges add up to. Channels in one group sound the same in
+    any order of their rows (``StemLayout.orders``), so a combination pays for the order that breaks
+    least. A channel with no continuity chooses freely and pays nothing, and a stem whose channels
+    all choose freely, as a frame heard alone does, leaves every cost as the criterion reads it.
 
     Attributes:
         layout: The stem's channels.
@@ -106,12 +106,12 @@ class StemContinuity:
         return any(channel is not None and channel.inertia > 0 for channel in self.channels)
 
     def charge(self, rows: Rows) -> float:
-        """What the frame pays for sounding ``rows`` beside the frames around it, its pulses ordered to break least."""
+        """What the frame pays for sounding ``rows`` beside the frames around it, in the order breaking least."""
         if not self.binding:
             return 0.0
 
         every_place = range(len(self.layout.slots))
-        return min(self._paid(ordered, every_place) for ordered in self.layout.pulse_orders(rows))
+        return min(self._paid(ordered, every_place) for ordered in self.layout.orders(rows))
 
     def beside(self) -> List[Rows]:
         """The combinations the frame before and the frame after play, each once, which a frame may hold through.

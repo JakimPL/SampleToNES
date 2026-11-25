@@ -1,3 +1,4 @@
+import math
 from dataclasses import replace
 from typing import Dict, Final, List, Mapping
 
@@ -161,7 +162,11 @@ def _sounding(layout: StemLayout, catalogs: Dict[GeneratorClassName, KindCatalog
 
 
 class TestTheSearchedChoices(BaseTestSuite):
-    """Every set of proposals each kind's channels may sound, crossed over the kinds within the stem's count."""
+    """Every set of proposals each kind's channels may sound, crossed over the kinds within the stem's count.
+
+    A set sounds once on a group of channels driven alike, its proposals on the group's lowest
+    channels, and in every placement over groups driven apart.
+    """
 
     def test_every_set_of_proposals_within_the_channels_is_searched_once(self) -> None:
         pulse_sets = [
@@ -183,8 +188,9 @@ class TestTheSearchedChoices(BaseTestSuite):
     def test_silence_on_every_channel_is_searched_first(self) -> None:
         assert searched_choices(_layout(EVERY_CHANNEL, cap=4), OFFERED)[0] == (None, None, None, None)
 
-    def test_a_kind_s_sets_stand_silence_first_then_smaller_sets_then_proposal_order(self) -> None:
-        choices = searched_choices(_layout(PULSES, cap=2), OFFERED)
+    @pytest.mark.parametrize("drive", [UNIT_DRIVE, LOUDER_DRIVE], ids=["unit", "louder"])
+    def test_a_kind_s_sets_stand_silence_first_then_smaller_sets_then_proposal_order(self, drive: float) -> None:
+        choices = searched_choices(_driven(_driven(_layout(PULSES, cap=2), 0, drive), 1, drive), OFFERED)
 
         assert choices == [
             (None, None),
@@ -216,6 +222,66 @@ class TestTheSearchedChoices(BaseTestSuite):
         assert (FIRST, SECOND) in choices
         assert (SECOND, FIRST) not in choices
         assert (None, FIRST) not in choices
+
+    @pytest.mark.parametrize("louder", [0, 1], ids=["first_louder", "second_louder"])
+    def test_pulses_driven_apart_sound_each_set_in_every_placement_over_both(self, louder: int) -> None:
+        choices = searched_choices(_driven(_layout(PULSES, cap=2), louder, LOUDER_DRIVE), OFFERED)
+
+        assert choices == [
+            (None, None),
+            (FIRST, None),
+            (None, FIRST),
+            (SECOND, None),
+            (None, SECOND),
+            (THIRD, None),
+            (None, THIRD),
+            (FIRST, SECOND),
+            (SECOND, FIRST),
+            (FIRST, THIRD),
+            (THIRD, FIRST),
+            (SECOND, THIRD),
+            (THIRD, SECOND),
+        ]
+
+    @pytest.mark.parametrize(
+        "cap, expected",
+        [
+            (1, [(None, None), (FIRST, None), (None, FIRST), (SECOND, None), (None, SECOND)]),
+            (
+                2,
+                [
+                    (None, None),
+                    (FIRST, None),
+                    (None, FIRST),
+                    (SECOND, None),
+                    (None, SECOND),
+                    (FIRST, SECOND),
+                    (SECOND, FIRST),
+                ],
+            ),
+        ],
+        ids=["count_one", "count_two"],
+    )
+    def test_the_second_pulse_driven_softer_sounds_a_proposal_alone_and_a_pair_in_either_order(
+        self, cap: int, expected: List[Choice]
+    ) -> None:
+        """A stem of the first pulse at drive two and the second at unit drive, proposing two pulse notes."""
+        choices = searched_choices(_driven(_layout(PULSES, cap=cap), 0, LOUDER_DRIVE), {PULSE: [FIRST, SECOND]})
+
+        assert choices == expected
+
+    @pytest.mark.parametrize("proposed", [1, 2, 10], ids=["one", "two", "ten"])
+    def test_two_groups_of_one_pulse_search_every_placement_of_the_sets_one_group_of_two_sounds(
+        self, proposed: int
+    ) -> None:
+        offered = {PULSE: list(range(proposed))}
+
+        alike = searched_choices(_layout(PULSES, cap=2), offered)
+        apart = searched_choices(_driven(_layout(PULSES, cap=2), 0, LOUDER_DRIVE), offered)
+
+        pairs = math.comb(proposed, 2)
+        assert len(alike) == 1 + proposed + pairs
+        assert len(apart) == 1 + 2 * proposed + 2 * pairs
 
     @pytest.mark.parametrize("cap", [1, 2, 3], ids=["one", "two", "three"])
     def test_no_choice_sounds_more_channels_than_the_stem_s_count(self, cap: int) -> None:
@@ -261,7 +327,7 @@ class TestChannelUnits(BaseTestSuite):
             (pulses.rows_by_instruction[self.QUIET],),
             (pulses.rows_by_instruction[HARMONY],),
         ]
-        return ChannelUnits.of(choices, 0, pulses, hearing, len(lead.feature.values))
+        return ChannelUnits.of(choices, 0, layout, pulses, hearing, len(lead.feature.values))
 
     def test_a_silent_choice_holds_the_silent_entry_and_the_proposals_theirs_in_row_order(
         self, units: ChannelUnits, catalogs: Dict[GeneratorClassName, KindCatalog]
@@ -310,6 +376,73 @@ class TestChannelUnits(BaseTestSuite):
         assert not units.features[SILENT_ENTRY].any()
         assert not units.powers[SILENT_ENTRY].any()
         assert (units.caps[SILENT_ENTRY], units.starts[SILENT_ENTRY]) == (0.0, 0.0)
+
+
+class TestAStartAcrossGroups(BaseTestSuite):
+    """A proposal starts on each channel at the level sounding it as the frame first heard it, at most full volume.
+
+    A frame heard alone hears a proposal on the first pulse. The second pulse, driven apart, sounds it
+    as loud at the first one's level times the squared ratio of their drives.
+    """
+
+    QUIET: Final[PulseInstruction] = PulseInstruction(on=True, pitch=64, volume=4, duty_cycle=2)
+    LOUD: Final[PulseInstruction] = PulseInstruction(on=True, pitch=64, volume=15, duty_cycle=2)
+
+    @staticmethod
+    def _starts(
+        played: PulseInstruction,
+        layout: StemLayout,
+        catalogs: Dict[GeneratorClassName, KindCatalog],
+        matcher: FrameMatcher,
+        bins: int,
+    ) -> List[float]:
+        """The start of ``played`` proposed alone, on the first pulse and on the second."""
+        row = catalogs[PULSE].rows_by_instruction[played]
+        hearing = heard_alone(layout, catalogs, matcher.candidate_provider, bins)
+        choices: List[Choice] = [(None, None), (row, None), (None, row)]
+        starts: List[float] = []
+        for place in (0, 1):
+            units = ChannelUnits.of(choices, place, layout, catalogs[PULSE], hearing, bins)
+            starts.append(float(units.starts[units.entries[place + 1]]))
+
+        return starts
+
+    def test_a_proposal_starts_on_a_pulse_driven_softer_at_the_level_sounding_it_as_loud(
+        self, lead: Fragment, catalogs: Dict[GeneratorClassName, KindCatalog], joint_matcher: FrameMatcher
+    ) -> None:
+        layout = _driven(_layout(PULSES, cap=2), 0, LOUDER_DRIVE)
+        unit = catalogs[PULSE].unit_of(catalogs[PULSE].rows_by_instruction[self.QUIET])
+
+        first, second = self._starts(self.QUIET, layout, catalogs, joint_matcher, len(lead.feature.values))
+
+        own = unit.level_of(self.QUIET.volume)
+        assert first == pytest.approx(own)
+        assert second == pytest.approx(own * (UNIT_DRIVE / LOUDER_DRIVE) ** 2)
+
+    def test_a_proposal_starts_on_a_pulse_driven_louder_at_most_at_full_volume(
+        self, lead: Fragment, catalogs: Dict[GeneratorClassName, KindCatalog], joint_matcher: FrameMatcher
+    ) -> None:
+        layout = _driven(_layout(PULSES, cap=2), 1, LOUDER_DRIVE)
+        bins = len(lead.feature.values)
+        pulses = catalogs[PULSE]
+        quiet = pulses.unit_of(pulses.rows_by_instruction[self.QUIET])
+        loud = pulses.unit_of(pulses.rows_by_instruction[self.LOUD])
+
+        quiet_starts = self._starts(self.QUIET, layout, catalogs, joint_matcher, bins)
+        loud_starts = self._starts(self.LOUD, layout, catalogs, joint_matcher, bins)
+
+        assert quiet_starts[1] == pytest.approx(quiet.level_of(self.QUIET.volume) * (LOUDER_DRIVE / UNIT_DRIVE) ** 2)
+        assert loud_starts == pytest.approx([loud.full_level, loud.full_level])
+
+    def test_pulses_driven_alike_start_a_proposal_alike(
+        self, lead: Fragment, catalogs: Dict[GeneratorClassName, KindCatalog], joint_matcher: FrameMatcher
+    ) -> None:
+        layout = _driven(_driven(_layout(PULSES, cap=2), 0, LOUDER_DRIVE), 1, LOUDER_DRIVE)
+        unit = catalogs[PULSE].unit_of(catalogs[PULSE].rows_by_instruction[self.QUIET])
+
+        starts = self._starts(self.QUIET, layout, catalogs, joint_matcher, len(lead.feature.values))
+
+        assert starts == [unit.level_of(self.QUIET.volume)] * 2
 
 
 @pytest.fixture(name="curved", scope="module", params=[LINEAR_GAMMA, CURVED_GAMMA], ids=["gamma_0", "gamma_50"])

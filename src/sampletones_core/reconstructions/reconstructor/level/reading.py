@@ -192,11 +192,11 @@ class TriangleReader:
         """The cap of a triangle atom heard alone: the level every triangle channel of the stem sounds it at.
 
         The triangle sounds one level, which reads as full volume, a level of one against its one
-        row. A frame heard alone hears every triangle row on the stem's first triangle channel
-        (``SteadyHearing.place_of``), so a triangle atom's cap is that channel's gain
+        row. A frame heard alone hears every triangle row on the channel a triangle row sounding alone
+        fills first (``SteadyHearing.place_of``), so a triangle atom's cap is that channel's gain
         (``StemLayout.gain``).
         """
-        return layout.gain(layout.places_of(TRIANGLE)[0])
+        return layout.gain(layout.first_place(TRIANGLE))
 
     def read(self, fragment: Fragment) -> Optional[FrameReading]:
         """Where one frame's bass stands against the triangle's level, ``None`` where no triangle run holds it.

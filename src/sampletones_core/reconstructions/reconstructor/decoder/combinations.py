@@ -17,8 +17,9 @@ class CombinationsDecoder(Decoder):
 
     A path per channel weighs each of the channel's alternatives with the stem's other channels playing
     the frame's pick, so it holds a line only where one channel changing alone keeps the frame cheap.
-    Here a state is a whole combination of the stem's channels, its pulses in either order, and one
-    path runs through the combinations the joint assignment pooled for every frame. A path costs:
+    Here a state is a whole combination of the stem's channels, its pulses in either order where the
+    stem drives them alike, and one path runs through the combinations the joint assignment pooled for
+    every frame. A path costs:
 
     - each frame's cost with its combination sounding, counted once, as the criterion reads the frame;
     - between two frames, what each channel pays for its own change, as the Viterbi decoder charges it.
