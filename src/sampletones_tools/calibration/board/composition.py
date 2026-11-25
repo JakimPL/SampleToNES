@@ -1,15 +1,27 @@
 from pathlib import Path
-from typing import Dict, Final, List, Optional, Sequence, Tuple
+from typing import Dict, Final, List, Optional, Sequence, Set, Tuple
 
 from sampletones_core.constants.enums import ChannelName, ordered_channels
 from sampletones_shared.paths.extensions import EXT_FILE_FLAC
 from sampletones_shared.utils.system.paths import get_filename
-from sampletones_tools.calibration.layout import RECORDINGS_DIRECTORY, combination_name
-from sampletones_tools.calibration.renders import RenderRecord, item_directory, variant_directory
+from sampletones_tools.calibration.config.level import VariantLevel
+from sampletones_tools.calibration.layout import combination_name
+from sampletones_tools.calibration.renders import RenderRecord, item_directory, recording_path, variant_directory
+from sampletones_tools.calibration.variants import LABEL_SEPARATOR
 from sampletones_tools.web.roles.table import channel_role
 
 from .clips import ClipStore
-from .model import BoardCell, BoardChannel, BoardGroup, BoardPage, BoardRow
+from .headings import heading_column, shared_words
+from .model import (
+    BoardCell,
+    BoardChannel,
+    BoardFamily,
+    BoardGlyphs,
+    BoardGroup,
+    BoardPage,
+    BoardRecording,
+    BoardRow,
+)
 from .reading import RunReading
 
 NO_CLIP: Final[str] = ""
@@ -19,7 +31,7 @@ def compose_page(
     runs: Sequence[RunReading],
     store: ClipStore,
     title: str,
-    glyph: str,
+    glyphs: BoardGlyphs,
 ) -> BoardPage:
     """
     Assemble everything a page draws from the runs it reports.
@@ -32,7 +44,7 @@ def compose_page(
         runs: The runs the page reports, in the order the page holds them.
         store: Where the page finds each clip it plays.
         title: The heading the page carries.
-        glyph: The purpose glyph each table's card header carries.
+        glyphs: The application's glyphs the page draws with.
 
     Returns:
         The page, ready to be written.
@@ -47,7 +59,7 @@ def compose_page(
     return BoardPage(
         title=title,
         referee=runs[0].referee,
-        glyph=glyph,
+        glyphs=glyphs,
         colors={channel.value: channel_role(channel.value) for channel in ChannelName},
         groups=groups,
     )
@@ -56,9 +68,8 @@ def compose_page(
 def _column_group(run: RunReading, store: ClipStore) -> Tuple[BoardGroup, ...]:
     """One table whose columns are the configurations the run measured."""
     variants = run.variants
-    items = [(item, run) for item in _items(run)]
-    rows = _rows(store, items, [(run, variant) for variant in variants])
-    return (BoardGroup(name=run.label, columns=variants, rows=rows),)
+    rows = _rows(store, _items(run), [(run, variant) for variant in variants])
+    return (_group(run.label, variants, rows),)
 
 
 def _variant_groups(runs: Sequence[RunReading], store: ClipStore) -> Tuple[BoardGroup, ...]:
@@ -67,25 +78,49 @@ def _variant_groups(runs: Sequence[RunReading], store: ClipStore) -> Tuple[Board
     for variant in _shared_variants(runs):
         holders = [run for run in runs if variant in run.variants]
         rows = _rows(store, _shared_items(holders), [(run, variant) for run in holders])
-        groups.append(BoardGroup(name=variant, columns=tuple(run.label for run in holders), rows=rows))
+        groups.append(_group(variant, [run.label for run in holders], rows))
 
     return tuple(groups)
 
 
+def _group(name: str, columns: Sequence[str], rows: Tuple[BoardRow, ...]) -> BoardGroup:
+    """A tab of these columns and rows, each heading naming what its column adds to the words they share."""
+    prefix = shared_words(columns)
+    return BoardGroup(
+        name=name,
+        prefix=LABEL_SEPARATOR.join(prefix),
+        columns=tuple(heading_column(column, prefix) for column in columns),
+        families=_families(rows),
+        rows=rows,
+    )
+
+
+def _families(rows: Sequence[BoardRow]) -> Tuple[BoardFamily, ...]:
+    """A family per name the rows carry, in the order they first name it, with every channel its cells sound."""
+    sounding: Dict[str, Set[ChannelName]] = {}
+    for row in rows:
+        channels = sounding.setdefault(row.family, set())
+        channels.update(ChannelName(channel.name) for cell in row.cells for channel in cell.channels)
+
+    return tuple(
+        BoardFamily(name=family, channels=tuple(channel.value for channel in ordered_channels(channels)))
+        for family, channels in sounding.items()
+    )
+
+
 def _rows(
     store: ClipStore,
-    items: Sequence[Tuple[str, RunReading]],
+    items: Sequence[str],
     places: Sequence[Tuple[RunReading, str]],
 ) -> Tuple[BoardRow, ...]:
     """A row per item every column holds a render of, so each row reads across the whole table."""
-    rows = [_row(store, item, recording_run, places) for item, recording_run in items]
+    rows = [_row(store, item, places) for item in items]
     return tuple(row for row in rows if row is not None)
 
 
 def _row(
     store: ClipStore,
     item: str,
-    recording_run: RunReading,
     places: Sequence[Tuple[RunReading, str]],
 ) -> Optional[BoardRow]:
     records = [(run, _record(run, item, variant)) for run, variant in places]
@@ -95,9 +130,26 @@ def _row(
 
     return BoardRow(
         item=item,
+        family=held[0][1].family,
         category=held[0][1].category,
-        recording=store.href(recording_run, _recording_path(recording_run, item)),
+        recordings=_recordings(store, item, held),
         cells=tuple(_cell(run, store, record) for run, record in held),
+    )
+
+
+def _recordings(
+    store: ClipStore,
+    item: str,
+    held: Sequence[Tuple[RunReading, RenderRecord]],
+) -> Tuple[BoardRecording, ...]:
+    """The recording at each level the cells were matched at, each from the run of the first cell at that level."""
+    first: Dict[VariantLevel, RunReading] = {}
+    for run, record in held:
+        first.setdefault(record.level, run)
+
+    return tuple(
+        BoardRecording(level=level.value, clip=store.href(run, recording_path(run.directory, level, item)))
+        for level, run in first.items()
     )
 
 
@@ -144,10 +196,6 @@ def _render_path(run: RunReading, record: RenderRecord) -> Path:
     return variant_directory(run.directory, record.variant) / get_filename(record.item, EXT_FILE_FLAC)
 
 
-def _recording_path(run: RunReading, item: str) -> Path:
-    return run.directory / RECORDINGS_DIRECTORY / get_filename(item, EXT_FILE_FLAC)
-
-
 def _sounding_channels(record: RenderRecord) -> List[ChannelName]:
     return ordered_channels({ChannelName(name) for name in record.timelines})
 
@@ -161,17 +209,13 @@ def _record(run: RunReading, item: str, variant: str) -> Optional[RenderRecord]:
 
 
 def _items(run: RunReading) -> Tuple[str, ...]:
-    return tuple(dict.fromkeys(record.item for record in run.records))
+    """The items the run lists, which are the ones it wrote audio for."""
+    return tuple(dict.fromkeys(record.item for record in run.records if record.listed))
 
 
 def _shared_variants(runs: Sequence[RunReading]) -> Tuple[str, ...]:
     return tuple(dict.fromkeys(variant for run in runs for variant in run.variants))
 
 
-def _shared_items(runs: Sequence[RunReading]) -> List[Tuple[str, RunReading]]:
-    seen: Dict[str, RunReading] = {}
-    for run in runs:
-        for item in _items(run):
-            seen.setdefault(item, run)
-
-    return list(seen.items())
+def _shared_items(runs: Sequence[RunReading]) -> Tuple[str, ...]:
+    return tuple(dict.fromkeys(item for run in runs for item in _items(run)))

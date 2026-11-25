@@ -34,7 +34,8 @@ from sampletones_core.reconstructions.reconstructor.stems.models.frame_assignmen
 from sampletones_core.structures.histogram import Histogram
 from tests.suite.fragments import amplified
 
-from .conftest import audible_instruction_of, rendered_fragment, shared_frames
+from ..conftest import rendered_fragment
+from .conftest import audible_instruction_of, shared_frames
 
 DEFAULT_CHANNELS: List[ChannelName] = [ChannelName.PULSE1, ChannelName.TRIANGLE, ChannelName.NOISE]
 LOUDER_STEM_SCALE: Final[float] = 4.0

@@ -1,0 +1,19 @@
+user_agent: sampletones-calibration/1.0
+pause_seconds: 2.0
+samples:
+  - name: sample-break
+    url: https://cdn.freesound.org/previews/724/724939_8772782-hq.mp3
+    file_name: freesound-724939.mp3
+    sha256: a55b7b646fe4da397be1884e58349d5e93b2280e49621384a736d1eb667c42ab
+    start_seconds: 0.0
+    end_seconds: 3.555
+    license: CC0 1.0
+    attribution: "\"133BPM BREAKBEAT (Live Acoustic Kit) Loop 01\" by djericmark, https://freesound.org/s/724939/"
+  - name: sample-blackbird
+    url: https://xeno-canto.org/815302/download
+    file_name: xeno-canto-815302.wav
+    sha256: 9da1d1bf87253e85fa226a9e9e47b7909ffccb9d355acdecf81aae8e547c212b
+    start_seconds: 0.95
+    end_seconds: 3.3
+    license: CC BY-SA 4.0
+    attribution: "steve, XC815302. Accessible at www.xeno-canto.org/815302."

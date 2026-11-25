@@ -3,6 +3,7 @@ from .cqt.normalization import normalize_cqt_energy
 from .cqt.transform import calculate_cqt
 from .fft import (
     calculate_fft,
+    calculate_fft_bin_edges,
     calculate_fft_frequencies,
     calculate_weights_from_edges,
     erb_bandwidth,
@@ -24,6 +25,7 @@ __all__ = [
     "calculate_cqt",
     "calculate_cqt_frequencies",
     "calculate_fft",
+    "calculate_fft_bin_edges",
     "calculate_fft_frequencies",
     "calculate_n_bins",
     "calculate_weights_from_edges",

@@ -6,7 +6,7 @@ from sampletones_core.structures.histogram import Histogram
 from sampletones_shared.array import xp
 
 from .metric import SpectralMetric
-from .spectral import calculate_spectral_loss, weighted_reference_energy
+from .spectral import calculate_shortfall_weighted_loss, calculate_spectral_loss, weighted_reference_energy
 from .temporal import calculate_expected_temporal_loss, calculate_temporal_loss
 from .weights import calculate_spectral_weights
 
@@ -50,6 +50,35 @@ class Criterion:
             _feature_values(feature),
             _feature_values(approximation_feature),
             self.weights,
+            metric=self.metric,
+        )
+
+    def shortfall_weighted_loss(
+        self,
+        feature: Union[xp.ndarray, Histogram],
+        approximation_feature: Union[xp.ndarray, Histogram],
+        shortfall_weight: float,
+    ) -> xp.ndarray:
+        """
+        The spectral distance with every bin a candidate falls short in counted at ``shortfall_weight``.
+
+        A candidate meant to sound beside other channels leaves sound those channels may cover, so
+        what it falls short of counts lightly and what it adds beyond the target counts in full. A
+        weight of one reads the spectral loss itself.
+
+        Args:
+            feature: Target feature, as a histogram or its values.
+            approximation_feature: Candidate features, as a histogram or stacked values.
+            shortfall_weight: The share of its usual cost a bin the candidate falls short in counts.
+
+        Returns:
+            One loss per candidate.
+        """
+        return calculate_shortfall_weighted_loss(
+            _feature_values(feature),
+            _feature_values(approximation_feature),
+            self.weights,
+            shortfall_weight,
             metric=self.metric,
         )
 

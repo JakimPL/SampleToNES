@@ -1,0 +1,112 @@
+settings:
+  greedy:
+    generation:
+      decoder:
+        selector: greedy
+  range30:
+    generation:
+      metric:
+        dynamic_range_decibels: 30.0
+  joint:
+    generation:
+      assignment:
+        method: joint
+  joint-price005:
+    generation:
+      assignment:
+        method: joint
+      weights:
+        channel_price: 0.005
+  joint-price01:
+    generation:
+      assignment:
+        method: joint
+      weights:
+        channel_price: 0.01
+  joint-price02:
+    generation:
+      assignment:
+        method: joint
+      weights:
+        channel_price: 0.02
+  fitted:
+    general:
+      level: fitted
+  joint-fitted:
+    general:
+      level: fitted
+    generation:
+      assignment:
+        method: joint
+  joint-combinations:
+    generation:
+      assignment:
+        method: joint
+      decoder:
+        selector: combinations
+  joint-fitted-combinations:
+    general:
+      level: fitted
+    generation:
+      assignment:
+        method: joint
+      decoder:
+        selector: combinations
+  joint-neighbors1:
+    generation:
+      assignment:
+        method: joint
+        neighbors: 1
+  joint-neighbors2:
+    generation:
+      assignment:
+        method: joint
+        neighbors: 2
+  joint-fitted-combinations-neighbors1:
+    general:
+      level: fitted
+    generation:
+      assignment:
+        method: joint
+        neighbors: 1
+      decoder:
+        selector: combinations
+  joint-fitted-combinations-neighbors2:
+    general:
+      level: fitted
+    generation:
+      assignment:
+        method: joint
+        neighbors: 2
+      decoder:
+        selector: combinations
+  joint-fitted-combinations-neighbors1-tonal-inertia05:
+    general:
+      level: fitted
+    generation:
+      assignment:
+        method: joint
+        neighbors: 1
+        inertia: {pulse1: 0.5, pulse2: 0.5, triangle: 0.5, noise: 0.0}
+      decoder:
+        selector: combinations
+  joint-fitted-combinations-neighbors1-tonal-inertia1:
+    general:
+      level: fitted
+    generation:
+      assignment:
+        method: joint
+        neighbors: 1
+        inertia: {pulse1: 1.0, pulse2: 1.0, triangle: 1.0, noise: 0.0}
+      decoder:
+        selector: combinations
+  joint-fitted-combinations-neighbors1-inertia05:
+    general:
+      level: fitted
+    generation:
+      assignment:
+        method: joint
+        neighbors: 1
+        inertia: {pulse1: 0.5, pulse2: 0.5, triangle: 0.5, noise: 0.5}
+      decoder:
+        selector: combinations

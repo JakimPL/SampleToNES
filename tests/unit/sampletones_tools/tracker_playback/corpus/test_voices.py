@@ -1,43 +1,16 @@
 from typing import Final
 
-import pytest
-from pydantic import ValidationError
-
 from sampletones_core.constants.enums import ChannelName, FeatureKey
 from sampletones_core.features.envelope import Envelope
-from sampletones_core.instructions import NoiseInstruction, PulseInstruction, TriangleInstruction
+from sampletones_core.instructions import PulseInstruction
 from sampletones_core.project.voices.envelopes import InstrumentEnvelopes
 from sampletones_core.project.voices.instrument import Instrument
 from sampletones_core.project.voices.sample import Sample
-from sampletones_tools.tracker_playback.corpus.spec import FrameRun, InstrumentSpec, SampleSpec
-from sampletones_tools.tracker_playback.corpus.voices import build_voice, channel_frames
+from sampletones_tools.corpus.written import FrameRun
+from sampletones_tools.tracker_playback.corpus.spec import InstrumentSpec, SampleSpec
+from sampletones_tools.tracker_playback.corpus.voices import build_voice
 
 PULSE_FRAME: Final = PulseInstruction(on=True, pitch=60, volume=15, duty_cycle=2)
-REST_FRAME: Final = PulseInstruction(on=False, pitch=60, volume=0, duty_cycle=2)
-
-
-class TestChannelFrames:
-    def test_each_run_repeats_its_frame_in_order(self) -> None:
-        runs = [
-            FrameRun(count=2, frame=PULSE_FRAME.model_dump()),
-            FrameRun(count=1, frame=REST_FRAME.model_dump()),
-        ]
-
-        assert channel_frames(ChannelName.PULSE1, runs) == [PULSE_FRAME, PULSE_FRAME, REST_FRAME]
-
-    def test_a_frame_is_read_as_the_instruction_its_channel_takes(self) -> None:
-        triangle = channel_frames(ChannelName.TRIANGLE, [FrameRun(count=1, frame={"on": True, "pitch": 48})])
-        noise = channel_frames(
-            ChannelName.NOISE,
-            [FrameRun(count=1, frame={"on": True, "period": 3, "volume": 9, "short": True})],
-        )
-
-        assert triangle == [TriangleInstruction(on=True, pitch=48)]
-        assert noise == [NoiseInstruction(on=True, period=3, volume=9, short=True)]
-
-    def test_a_frame_the_channel_cannot_play_is_refused(self) -> None:
-        with pytest.raises(ValidationError):
-            channel_frames(ChannelName.NOISE, [FrameRun(count=1, frame=PULSE_FRAME.model_dump())])
 
 
 class TestBuildVoice:

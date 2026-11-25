@@ -3,6 +3,7 @@ from .geometric_sweep import GeometricSweepOscillator
 from .pulse import DutyCycle, PulseOscillator
 from .sine import SineOscillator
 from .types import OscillatorUnion
+from .vibrato import VibratoOscillator
 from .walk_noise import WalkNoiseOscillator
 from .white_noise import WhiteNoiseOscillator
 
@@ -13,6 +14,7 @@ __all__ = [
     "OscillatorUnion",
     "PulseOscillator",
     "SineOscillator",
+    "VibratoOscillator",
     "WalkNoiseOscillator",
     "WhiteNoiseOscillator",
 ]

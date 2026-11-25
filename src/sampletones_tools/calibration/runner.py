@@ -1,172 +1,200 @@
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, FrozenSet, List, Mapping, Optional, Tuple
+from typing import Dict, FrozenSet, List, Optional, Tuple
 
 import numpy as np
 
-from sampletones_core.configs import Config
-from sampletones_core.constants.enums import ChannelName, SpectrumMethod
-from sampletones_core.headless.library import ensure_library
+from sampletones_core.constants.enums import ChannelName
 from sampletones_core.instructions import InstructionUnion
 from sampletones_core.reconstructions import Reconstruction, Reconstructor
 from sampletones_core.reconstructions.reconstruction.renders import rendered_channels, rendered_mix
+from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_shared.logger import logger
 
 from .corpus.item import CorpusItem
-from .referee.protocol import Judgment, Referee
-from .renders import RenderRecord, sounding_timelines, write_channel_renders, write_recording, write_render
+from .referee.panel import RefereePanel
+from .referee.protocol import Judgment
+from .renders import (
+    RenderRecord,
+    sounding_timelines,
+    write_channel_renders,
+    write_record,
+    write_recording,
+    write_render,
+)
+from .rows import CalibrationRow, recorded_rows
+from .trace import SearchTrace, TraceRecorder
+from .variants import CalibrationVariant
 
 
 @dataclass(frozen=True)
-class CalibrationVariant:
-    label: str
-    config: Config
+class Conversion:
+    """One reference sound a run converts under one variant, and where its record goes.
 
+    A sound held as stems converts under its stems setup, and a sound naming channels of its own
+    converts over them. Every other sound converts as one recording over the run's channels.
 
-@dataclass(frozen=True)
-class CalibrationRow:
-    variant: str
-    item: str
-    category: str
-    referee: str
-    component: str
-    score: float
-
-
-def build_variants(
-    base: Config,
-    methods: List[SpectrumMethod],
-    perceptual_exponents: List[float],
-    temporal_weights: List[float],
-) -> List[CalibrationVariant]:
+    Attributes:
+        variant: The configuration the sound is converted under.
+        item: The reference sound.
+        position: The sound's place in the corpus, which its record keeps.
+        paths: The written files the conversion reads, one per stem of a sound held as stems.
+        run_channels: The channels the run converts a sound over where the sound names none.
+        run_directory: The directory the run writes its renders and recordings into.
     """
-    Cartesian sweep of spectrum methods and criterion knobs over a base configuration.
 
-    Each variant keeps the base configuration and overrides the spectrum method, the
-    perceptual exponent, and (when swept) the temporal loss weight; the label encodes
-    the overridden values so report rows stay self-describing.
+    variant: CalibrationVariant
+    item: CorpusItem
+    position: int
+    paths: Tuple[Path, ...]
+    run_channels: FrozenSet[ChannelName]
+    run_directory: Path
 
-    Args:
-        base: Configuration providing every value the sweep leaves untouched.
-        methods: Spectrum methods to evaluate.
-        perceptual_exponents: Values of `metric.perceptual_exponent` to evaluate.
-        temporal_weights: Values of `weights.temporal_loss_weight` to evaluate;
-            an empty list keeps the base blend.
+    @property
+    def stems(self) -> Optional[StemsConfig]:
+        """The stems setup the files are converted under, or ``None`` for one recording."""
+        return self.item.stems.config if self.item.stems is not None else None
 
-    Returns:
-        One labeled variant per sweep combination.
-    """
-    variants: List[CalibrationVariant] = []
-    swept_temporal: List[Optional[float]] = list(temporal_weights) if temporal_weights else [None]
+    @property
+    def channels(self) -> FrozenSet[ChannelName]:
+        """The channels the conversion covers: the sound's own where it names them, else the run's."""
+        return self.item.channels if self.item.channels is not None else self.run_channels
 
-    for method in methods:
-        for exponent in perceptual_exponents:
-            for temporal_weight in swept_temporal:
-                label = f"{method.value}-pe{exponent:g}"
-                generation = base.generation.model_copy(
-                    update={
-                        "metric": base.generation.metric.model_copy(update={"perceptual_exponent": exponent}),
-                    }
-                )
-                if temporal_weight is not None:
-                    label = f"{label}-tw{temporal_weight:g}"
-                    generation = generation.model_copy(
-                        update={
-                            "weights": generation.weights.model_copy(
-                                update={
-                                    "temporal_loss_weight": temporal_weight,
-                                    "spectral_loss_weight": 1.0 - temporal_weight,
-                                }
-                            )
-                        }
-                    )
+    def reconstruct(self, reconstructor: Reconstructor, recorder: TraceRecorder) -> Optional[Reconstruction]:
+        """The sound reconstructed under its stems setup or as one recording, ``recorder`` watching the search."""
+        if self.stems is not None:
+            return reconstructor.reconstruct(list(self.paths), self.stems, observe=recorder)
 
-                config = base.model_copy(
-                    update={
-                        "library": base.library.model_copy(update={"spectrum_method": method}),
-                        "generation": generation,
-                    }
-                )
-                variants.append(
-                    CalibrationVariant(
-                        label=label,
-                        config=config,
-                    )
-                )
-
-    return variants
+        return reconstructor(self.paths[0], observe=recorder)
 
 
-def evaluate_variants(
-    variants: List[CalibrationVariant],
-    items: List[CorpusItem],
-    item_paths: Dict[str, Path],
-    referees: List[Referee],
-    run_directory: Path,
-    channels: FrozenSet[ChannelName],
+def evaluate_conversion(
+    conversion: Conversion,
+    reconstructor: Reconstructor,
+    panel: RefereePanel,
 ) -> List[CalibrationRow]:
     """
-    Reconstruct the corpus under every variant, score the results and keep what was heard.
+    Reconstruct one sound, judge it, and keep what was heard.
 
-    Each corpus item is reconstructed with the variant's configuration and every
-    referee judges the approximation against the preprocessed original, both on the
-    common scale set by the working-level coefficient. The render, the recording it
-    reconstructs and a record of the scores and the sounding frames are written under
-    the run directory, so a render can be heard and read again after the run.
+    The recording and the render are judged on the common scale the working-level coefficient
+    sets. The record is written last, after the audio of a listed sound, so a record stands only for a
+    conversion written whole, and a resumed run takes it up as done.
 
     Args:
-        variants: Labeled configurations to evaluate.
-        items: Corpus items, carrying the category used in reports.
-        item_paths: Written WAV path per corpus item name.
-        referees: Referees scoring each reconstruction.
-        run_directory: The directory the run writes its renders and recordings into.
-        channels: The channels every variant reconstructs with.
+        conversion: The sound, the variant and where the record goes.
+        reconstructor: The variant's reconstructor over the conversion's channels.
+        panel: The referees judging the reconstruction.
 
     Returns:
-        One row per (variant, item, referee, reading).
+        One row per (referee, reading), read from the record written, empty where the reconstruction
+        is unavailable.
     """
-    rows: List[CalibrationRow] = []
-    for variant in variants:
-        ensure_library(variant.config)
-        reconstructor = Reconstructor(variant.config, channels)
-        sample_rate = variant.config.library.sample_rate
-        for position, item in enumerate(items):
-            path = item_paths[item.name]
-            reconstruction = reconstructor(path)
-            if reconstruction is None:
-                logger.info(f"[{variant.label}] {item.name}: reconstruction unavailable")
-                continue
+    variant, item = conversion.variant, conversion.item
+    recorder = TraceRecorder()
+    reconstruction = conversion.reconstruct(reconstructor, recorder)
+    if reconstruction is None:
+        logger.info(f"[{variant.label}] {item.name}: reconstruction unavailable")
+        return []
 
-            reference, estimate = _compared_signals(reconstructor.load_audio(path), reconstruction)
-            judgments = {referee.name: referee.judge(reference, estimate) for referee in referees}
-            silence = {referee.name: referee.judge(reference, np.zeros_like(reference)).score for referee in referees}
-            rows.extend(_rows(variant, item, judgments))
+    reference, estimate = _compared_signals(reconstructor.load_audio(list(conversion.paths)), reconstruction)
+    judgments = _judgments(item, reference, estimate, reconstruction, recorder.trace, panel)
+    record = _record(conversion, reconstruction, judgments, _silence_scores(reference, panel))
+    if item.listed:
+        _write_listened(conversion.run_directory, record, reference, estimate, reconstruction, variant)
+    else:
+        write_record(conversion.run_directory, record)
 
-            write_recording(run_directory, item.name, reference * reconstruction.coefficient, sample_rate)
-            write_render(
-                run_directory,
-                RenderRecord(
-                    variant=variant.label,
-                    item=item.name,
-                    position=position,
-                    category=item.category,
-                    timelines=sounding_timelines(_played_instructions(reconstruction)),
-                    judgments={name: judgment.readings() for name, judgment in judgments.items()},
-                    silence=silence,
-                ),
-                estimate * reconstruction.coefficient,
-                sample_rate,
-            )
-            write_channel_renders(
-                run_directory,
-                variant.label,
-                item.name,
-                _channel_audio(reconstruction, estimate.shape[0]),
-                sample_rate,
-            )
-            logger.info(f"[{variant.label}] {item.name}: scored")
+    logger.debug(f"[{variant.label}] {item.name}: scored")
+    return recorded_rows(record)
 
-    return rows
+
+def _judgments(
+    item: CorpusItem,
+    reference: np.ndarray,
+    estimate: np.ndarray,
+    reconstruction: Reconstruction,
+    trace: Optional[SearchTrace],
+    panel: RefereePanel,
+) -> Dict[str, Judgment]:
+    """Every referee's judgment of a render, in the order the record keeps and the report reads them.
+
+    The audio referees lead, so the first of them heads the report and the page. A sound whose truth
+    the corpus knows is read against it by every truth referee, and its search by every trace
+    referee. Every conversion is read on its own by the conversion referees. A referee with no
+    reading of the conversion is left out.
+    """
+    judgments = {referee.name: referee.judge(reference, estimate) for referee in panel.audio}
+    truth = item.truth
+    if truth is not None:
+        for referee in panel.truth:
+            judged = referee.judge(truth, reconstruction)
+            if judged is not None:
+                judgments[referee.name] = judged
+
+        if trace is not None:
+            for trace_referee in panel.trace:
+                traced = trace_referee.judge(truth, trace, reconstruction)
+                if traced is not None:
+                    judgments[trace_referee.name] = traced
+
+    for conversion_referee in panel.conversion:
+        judged = conversion_referee.judge(reconstruction)
+        if judged is not None:
+            judgments[conversion_referee.name] = judged
+
+    return judgments
+
+
+def _silence_scores(reference: np.ndarray, panel: RefereePanel) -> Dict[str, float]:
+    """Every audio referee's score for complete silence against the recording, the distance a render closes."""
+    return {referee.name: referee.judge(reference, np.zeros_like(reference)).score for referee in panel.audio}
+
+
+def _record(
+    conversion: Conversion,
+    reconstruction: Reconstruction,
+    judgments: Dict[str, Judgment],
+    silence: Dict[str, float],
+) -> RenderRecord:
+    """The record of what the conversion heard: its level, its readings, silence's scores and each channel's frames."""
+    item = conversion.item
+    return RenderRecord(
+        variant=conversion.variant.label,
+        item=item.name,
+        position=conversion.position,
+        family=item.family.value,
+        category=item.category,
+        listed=item.listed,
+        level=conversion.variant.level,
+        timelines=sounding_timelines(_played_instructions(reconstruction)),
+        judgments={name: judgment.readings() for name, judgment in judgments.items()},
+        silence=silence,
+    )
+
+
+def _write_listened(
+    run_directory: Path,
+    record: RenderRecord,
+    reference: np.ndarray,
+    estimate: np.ndarray,
+    reconstruction: Reconstruction,
+    variant: CalibrationVariant,
+) -> None:
+    """Write what the page plays of a listed sound: the recording, the channel parts, then the render and its record.
+
+    Each file is written back on the recording's own scale, and the recording is kept at the level the
+    render was matched at, so the page plays a render at the level of the recording it reconstructs.
+    """
+    sample_rate = variant.config.library.sample_rate
+    write_recording(run_directory, record.level, record.item, reference * reconstruction.coefficient, sample_rate)
+    write_channel_renders(
+        run_directory,
+        record.variant,
+        record.item,
+        _channel_audio(reconstruction, estimate.shape[0]),
+        sample_rate,
+    )
+    write_render(run_directory, record, estimate * reconstruction.coefficient, sample_rate)
 
 
 def _compared_signals(
@@ -191,24 +219,6 @@ def _channel_audio(reconstruction: Reconstruction, length: int) -> Dict[ChannelN
 
 
 def _played_instructions(reconstruction: Reconstruction) -> Dict[ChannelName, List[InstructionUnion]]:
+    """The instructions of every channel the reconstruction plays."""
     instructions = reconstruction.instructions
     return {channel_name: instructions[channel_name] for channel_name in reconstruction.playing_channels}
-
-
-def _rows(
-    variant: CalibrationVariant,
-    item: CorpusItem,
-    judgments: Mapping[str, Judgment],
-) -> List[CalibrationRow]:
-    return [
-        CalibrationRow(
-            variant=variant.label,
-            item=item.name,
-            category=item.category,
-            referee=referee,
-            component=component,
-            score=value,
-        )
-        for referee, judgment in judgments.items()
-        for component, value in judgment.readings().items()
-    ]

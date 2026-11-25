@@ -5,6 +5,7 @@ import numpy as np
 
 from sampletones_application.ui.elements.graphs.layers.layer import Layer
 from sampletones_application.utils.palette.colors.base import BaseColor
+from sampletones_core.fft.fft import calculate_bin_centers
 from sampletones_core.library import InstructionLibraryFragment
 from sampletones_core.structures.histogram import Histogram
 
@@ -29,7 +30,7 @@ class SpectrumLayer(Layer):
             spectrum = Histogram(edges=spectrum.edges[: n_bins + 1], values=spectrum.values[:n_bins])
 
         values = spectrum.values / np.max(spectrum.values)
-        frequencies = (spectrum.edges[:-1] + spectrum.edges[1:]) / 2
+        frequencies = calculate_bin_centers(spectrum.edges)
         bandwidths = spectrum.edges[1:] - spectrum.edges[:-1]
         brightness = np.round(values * 255).astype(np.uint8)
 

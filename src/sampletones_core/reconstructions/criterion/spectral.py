@@ -37,34 +37,122 @@ def calculate_spectral_loss(
         ValueError: If the spectral distance is unsupported.
     """
     reference, candidates, weights = _prepare(reference, candidates, weights)
-    floor = spectral_floor(reference, metric=metric)
+    terms, scale = _aligned_terms(reference, candidates, weights, metric=metric)
+    return summed_terms(terms, distance=metric.distance) / scale
 
+
+def calculate_shortfall_weighted_loss(
+    reference: xp.ndarray,
+    candidates: xp.ndarray,
+    weights: xp.ndarray,
+    shortfall_weight: float,
+    *,
+    metric: SpectralMetric,
+) -> xp.ndarray:
+    """
+    The spectral distance with every bin a candidate falls short in counted at ``shortfall_weight``.
+
+    A candidate meant to sound beside other channels leaves sound those channels may cover, so what
+    it falls short of counts lightly and what it adds beyond the target counts in full. A bin equal to
+    the target counts at the weight. A weight of one reads the spectral loss itself. Both sides are
+    compared on the active array backend, as the terms are measured, so host values score as values
+    on the graphics card do.
+
+    Args:
+        reference: Target feature values, one dimension.
+        candidates: Candidate feature values, one candidate per row.
+        weights: Per-bin weights of the configuration.
+        shortfall_weight: The share of its usual cost a bin the candidate falls short in counts.
+        metric: The distance family and the scale bins are measured on.
+
+    Returns:
+        One loss per candidate.
+
+    Raises:
+        ValueError: If the reference has more than one dimension.
+        ValueError: If the candidate width departs from the reference length.
+        ValueError: If the spectral distance is unsupported.
+    """
+    reference, candidates, weights = _prepare(reference, candidates, weights)
+    terms, scale = _aligned_terms(reference, candidates, weights, metric=metric)
+    counted = xp.where(candidates > reference, terms, shortfall_weight * terms)
+    return summed_terms(counted, distance=metric.distance) / scale
+
+
+def _aligned_terms(
+    reference: xp.ndarray,
+    candidates: xp.ndarray,
+    weights: xp.ndarray,
+    *,
+    metric: SpectralMetric,
+) -> Tuple[xp.ndarray, xp.ndarray]:
+    """
+    What every bin adds to the spectral distance of each candidate, and the scale the sum is read on.
+
+    The sides come aligned (``_prepare``). A bin's term is the weighted distance of the floored
+    candidate from the floored target, so the loss is the terms' sum over the scale (its square root
+    first, for the squared distance). A ranking that counts some bins differently reads them here: a
+    bin where a candidate falls short of the target holds sound other channels may still cover.
+
+    Returns:
+        The per-bin terms, one row per candidate, and the scale: the target's weighted energy plus
+        its floor.
+
+    Raises:
+        ValueError: If the spectral distance is unsupported.
+    """
+    floor = spectral_floor(reference, metric=metric)
+    terms = _bin_terms(reference, candidates, weights, floor, metric=metric)
+    return terms, weighted_reference_energy(reference, weights, distance=metric.distance) + floor
+
+
+def summed_terms(terms: xp.ndarray, *, distance: SpectralDistance) -> xp.ndarray:
+    """
+    The distance each candidate's bin terms add up to, before it is read on the target's scale.
+
+    A squared distance is the root of its terms' sum, as a Euclidean length is; every other family's
+    terms add up to the distance themselves.
+
+    Args:
+        terms: The per-bin terms, one row per candidate.
+        distance: The family the terms belong to.
+
+    Returns:
+        One distance per candidate.
+    """
+    summed = xp.sum(terms, axis=-1)
+    match distance:
+        case SpectralDistance.SQUARED:
+            return xp.sqrt(summed)
+        case _:
+            return summed
+
+
+def _bin_terms(
+    reference: xp.ndarray,
+    candidates: xp.ndarray,
+    weights: xp.ndarray,
+    floor: xp.ndarray,
+    *,
+    metric: SpectralMetric,
+) -> xp.ndarray:
+    """The weighted distance of every candidate from the target in every bin, both measured above ``floor``.
+
+    Adding the floor to both sides leaves a squared or an absolute difference as it is, so the
+    beta-divergence alone reads the floored spectra.
+
+    Raises:
+        ValueError: If the spectral distance is unsupported.
+    """
     match metric.distance:
         case SpectralDistance.SQUARED:
-            numerator = xp.sqrt(
-                xp.sum(
-                    weights * (candidates - reference) ** 2,
-                    axis=-1,
-                )
-            )
+            return weights * (candidates - reference) ** 2
         case SpectralDistance.ABSOLUTE:
-            numerator = xp.sum(weights * xp.abs(candidates - reference), axis=-1)
+            return weights * xp.abs(candidates - reference)
         case SpectralDistance.BETA_DIVERGENCE:
-            numerator = xp.sum(
-                weights
-                * _beta_divergence(
-                    reference,
-                    candidates,
-                    metric.divergence_beta,
-                    floor,
-                ),
-                axis=-1,
-            )
+            return weights * _beta_divergence(reference, candidates, metric.divergence_beta, floor)
         case _:
             raise ValueError(f"Unsupported spectral distance: {metric.distance}")
-
-    denominator = weighted_reference_energy(reference, weights, distance=metric.distance)
-    return numerator / (denominator + floor)
 
 
 def spectral_floor(reference: xp.ndarray, *, metric: SpectralMetric) -> xp.ndarray:
@@ -126,6 +214,10 @@ def _prepare(
     candidates: xp.ndarray,
     weights: xp.ndarray,
 ) -> Tuple[xp.ndarray, xp.ndarray, xp.ndarray]:
+    """The target as one row and the candidates as a stack of rows, on the active array backend.
+
+    The weights stand as one row, which every candidate's bins read.
+    """
     reference, candidates = align_candidates(reference, candidates)
     if weights.ndim == 1:
         weights = weights.reshape((1, -1))

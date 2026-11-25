@@ -1,8 +1,8 @@
 # Bugs and to-dos
 
 This is the working ledger of what is still owed: to-dos, deviations from the architecture, and known
-bugs. Read it before starting work in an area. Add an entry when a change knowingly leaves something
-behind. Each entry says what is owed and why, and the code and the change that closes it hold the rest.
+bugs. Read it before starting work in an area, and read [its rules](guidelines.md#the-ledger) before adding
+or changing an entry.
 
 ## To-dos
 
@@ -108,6 +108,9 @@ dimension the import starts carrying.
 * The `fft` and `logfft` analysis floors. Their window spans two cycles of the pulse's lowest note, so the
   triangle's lowest octave reaches them by its harmonics alone. Covering it doubles their window and
   coarsens their timing.
+* The joint assignment for stems that share channels. It solves each stem on its own channels, so a setup
+  where two stems may take one channel is refused under `generation.assignment.method: joint`. A joint
+  choice across stems, ordered by the hierarchy, closes it.
 
 ## Architecture
 

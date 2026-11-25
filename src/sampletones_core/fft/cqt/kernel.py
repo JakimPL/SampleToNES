@@ -12,7 +12,7 @@ from .frequencies import calculate_cqt_frequencies
 from .geometry import calculate_wavelet_lengths
 
 
-def _window_envelope(window: CQTWindow, length: int) -> np.ndarray:
+def window_envelope(window: CQTWindow, length: int) -> np.ndarray:
     """Real analysis envelope of ``length`` samples.
 
     The rectangular envelope is uniform; the Hann envelope uses the periodic form
@@ -25,6 +25,15 @@ def _window_envelope(window: CQTWindow, length: int) -> np.ndarray:
             return 0.5 - 0.5 * np.cos(2.0 * np.pi * np.arange(length) / length)
         case _:
             assert_never(window)
+
+
+def wavelet_start(frame_length: int, length: int) -> int:
+    """Where a wavelet of ``length`` samples starts within a kernel frame of ``frame_length`` samples.
+
+    The wavelet stands in the frame's middle. Where the two lengths differ in parity, it stands half
+    a sample toward the frame's start.
+    """
+    return (frame_length - length) // 2
 
 
 @dataclass(frozen=True)
@@ -76,8 +85,8 @@ def build_cqt_kernel(
     matrix = np.zeros((n_bins, frame_length), dtype=np.complex64)
     for index in range(n_bins):
         length = int(lengths[index])
-        start = (frame_length - length) // 2
-        envelope = _window_envelope(window, length)
+        start = wavelet_start(frame_length, length)
+        envelope = window_envelope(window, length)
         centered = np.arange(length) - (length - 1) / 2.0
         wavelet = envelope * np.exp(-2j * np.pi * frequencies[index] * centered / sample_rate)
         matrix[index, start : start + length] = wavelet / envelope.sum() * np.sqrt(length)

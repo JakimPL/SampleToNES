@@ -58,7 +58,10 @@ class TestSetUpEnvironment:
             environment={"PATH": "/usr/bin"},
         )
 
-        assert runner.lines == [" ".join(command) for command in setup_environment.setup_commands(NAME, None)]
+        assert runner.lines == [
+            *(" ".join(command) for command in setup_environment.setup_commands(NAME, None)),
+            " ".join(setup_environment.FETCH_SAMPLES),
+        ]
         assert all(recorded.environment[ARCHFLAGS] == "-arch arm64" for recorded in runner.commands)
 
     def test_linux_passes_the_variables_through(self, tmp_path: Path) -> None:
@@ -75,3 +78,22 @@ class TestSetUpEnvironment:
         )
 
         assert all(recorded.environment == {"PATH": "/usr/bin"} for recorded in runner.commands)
+
+    def test_a_fetch_of_the_samples_that_fails_is_noted_and_the_setup_goes_on(
+        self,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        runner = RecordingRunner({"--fetch-samples": 1}, None)
+
+        setup_environment.set_up_environment(
+            tmp_path,
+            NAME,
+            Linux(),
+            None,
+            machine="x86_64",
+            runner=runner,
+            environment={"PATH": "/usr/bin"},
+        )
+
+        assert setup_environment.UNFETCHED_SAMPLES in capsys.readouterr().out

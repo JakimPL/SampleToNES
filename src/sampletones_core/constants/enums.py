@@ -68,9 +68,26 @@ class PhaseAlignerName(StrEnum):
     CROSS_CORRELATION = "cross_correlation"
 
 
+class AssignmentMethod(StrEnum):
+    """How a frame's channels are given their candidates: one pick at a time, or whole combinations at once."""
+
+    PICKS = "picks"
+    JOINT = "joint"
+
+
+class LevelMethod(StrEnum):
+    """How the working level is set: by the frames' loudness, or moved onto a triangle line the frames hold."""
+
+    COEFFICIENT = "coefficient"
+    FITTED = "fitted"
+
+
 class SelectorName(StrEnum):
+    """How a decoder reads the frames' alternatives: each frame alone, one path per channel, or one per stem."""
+
     GREEDY = "greedy"
     VITERBI = "viterbi"
+    COMBINATIONS = "combinations"
 
 
 class HierarchyMode(StrEnum):

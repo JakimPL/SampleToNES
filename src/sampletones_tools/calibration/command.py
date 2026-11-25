@@ -1,9 +1,14 @@
+from __future__ import annotations
+
 from argparse import ArgumentParser, Namespace
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Final, List, Optional
+from typing import TYPE_CHECKING, Dict, Final, List, Optional, Self
 
 from sampletones_shared.command import Command
+
+if TYPE_CHECKING:
+    from sampletones_tools.calibration.session import CalibrationRequest
 
 NAME: Final[str] = "calibration"
 HELP: Final[str] = (
@@ -21,27 +26,39 @@ WEIGHTS_HELP: Final[str] = (
     "values of weights.temporal_loss_weight to measure, comma separated; without it, the suite's values"
 )
 CHANNELS_HELP: Final[str] = (
-    "channels every variant reconstructs with, comma separated; without it, the suite's channels"
+    "channels every variant reconstructs the synthesized sounds with, comma separated; without it, the suite's "
+    "channels"
 )
+SETTINGS_HELP: Final[str] = (
+    "named sets of settings from settings.yaml to measure beside the base configuration, comma separated, e.g. greedy"
+)
+LEVELS_HELP: Final[str] = (
+    "levels to match the sounds at, comma separated: default, or true for the level a written sound's frames play at"
+)
+CATEGORIES_HELP: Final[str] = "categories of reference sounds to measure, comma separated; without it, every one"
+SKIP_HELP: Final[str] = "families or categories of reference sounds to leave out, comma separated, e.g. notes"
+WORKERS_HELP: Final[str] = "how many conversions run at once; without it, the configuration's general.max_workers"
+RESUME_HELP: Final[str] = "take up the run in --output where it stopped, converting only the sounds it has no record of"
+CORPUS_HELP: Final[str] = "a manifest of local sounds, such as NES-MDB pieces, that join the packaged reference sounds"
 BOARD_HELP: Final[str] = (
     "run directories to compare on one listening page, measuring nothing; without -o the page lands in a "
     "timestamped directory under Documents/SampleToNES/calibration/pages"
 )
 PALETTE_HELP: Final[str] = "the palette the listening page is drawn in; without it, the application's own"
 NO_OPEN_HELP: Final[str] = "leave the listening page closed, printing its link alone"
-
-MEASURING_OPTIONS: Final[List[str]] = [
-    "--config",
-    "--methods",
-    "--perceptual-exponents",
-    "--temporal-weights",
-    "--channels",
-]
+FETCH_SAMPLES_HELP: Final[str] = (
+    "download the recordings the benchmark keeps for listening, each checked against its checksum, measuring nothing"
+)
 
 
 @dataclass(frozen=True)
 class CalibrationArguments:
-    """What a calibration run is given, as written on the command line."""
+    """What a calibration run is given, as written on the command line.
+
+    A run does one of three things: it fetches the listening samples, builds a page over finished
+    runs, or measures. The options that measure shape a measurement alone, so a page over finished
+    runs takes none of them.
+    """
 
     config: Optional[Path]
     output: Optional[Path]
@@ -49,9 +66,58 @@ class CalibrationArguments:
     perceptual_exponents: Optional[str]
     temporal_weights: Optional[str]
     channels: Optional[str]
+    settings: Optional[str]
+    levels: Optional[str]
+    categories: Optional[str]
+    skip: Optional[str]
+    workers: Optional[int]
+    resume: bool
+    corpus: Optional[Path]
     board: Optional[List[Path]]
     palette: Optional[str]
     open_page: bool
+    fetch_samples: bool
+
+    @classmethod
+    def read(cls, arguments: Namespace) -> Self:
+        """The arguments as the parser ``configure`` sets up read them."""
+        return cls(
+            config=arguments.config,
+            output=arguments.output,
+            methods=arguments.methods,
+            perceptual_exponents=arguments.perceptual_exponents,
+            temporal_weights=arguments.temporal_weights,
+            channels=arguments.channels,
+            settings=arguments.settings,
+            levels=arguments.levels,
+            categories=arguments.categories,
+            skip=arguments.skip,
+            workers=arguments.workers,
+            resume=arguments.resume,
+            corpus=arguments.corpus,
+            board=arguments.board,
+            palette=arguments.palette,
+            open_page=arguments.open_page,
+            fetch_samples=arguments.fetch_samples,
+        )
+
+    @property
+    def measuring(self) -> Dict[str, bool]:
+        """Every option that measures, by its flag, beside whether the command line gave it."""
+        return {
+            "--config": self.config is not None,
+            "--methods": self.methods is not None,
+            "--perceptual-exponents": self.perceptual_exponents is not None,
+            "--temporal-weights": self.temporal_weights is not None,
+            "--channels": self.channels is not None,
+            "--settings": self.settings is not None,
+            "--levels": self.levels is not None,
+            "--categories": self.categories is not None,
+            "--skip": self.skip is not None,
+            "--workers": self.workers is not None,
+            "--resume": self.resume,
+            "--corpus": self.corpus is not None,
+        }
 
 
 def configure(parser: ArgumentParser) -> None:
@@ -61,64 +127,96 @@ def configure(parser: ArgumentParser) -> None:
     parser.add_argument("--perceptual-exponents", type=str, default=None, help=EXPONENTS_HELP)
     parser.add_argument("--temporal-weights", type=str, default=None, help=WEIGHTS_HELP)
     parser.add_argument("--channels", type=str, default=None, help=CHANNELS_HELP)
+    parser.add_argument("--settings", type=str, default=None, help=SETTINGS_HELP)
+    parser.add_argument("--levels", type=str, default=None, help=LEVELS_HELP)
+    parser.add_argument("--categories", type=str, default=None, help=CATEGORIES_HELP)
+    parser.add_argument("--skip", type=str, default=None, help=SKIP_HELP)
+    parser.add_argument("--workers", type=int, default=None, help=WORKERS_HELP)
+    parser.add_argument("--resume", action="store_true", help=RESUME_HELP)
+    parser.add_argument("--corpus", type=Path, default=None, metavar="FILE", help=CORPUS_HELP)
     parser.add_argument("--board", type=Path, nargs="+", default=None, metavar="RUN", help=BOARD_HELP)
     parser.add_argument("--palette", type=str, default=None, help=PALETTE_HELP)
     parser.add_argument("--no-open", dest="open_page", action="store_false", help=NO_OPEN_HELP)
+    parser.add_argument("--fetch-samples", action="store_true", help=FETCH_SAMPLES_HELP)
 
 
 def run(arguments: Namespace) -> int:
     """Runs the calibration the options describe, or builds a page over the runs they name.
 
     Raises:
-        SystemExit: If a method, a value, a channel or a palette is unknown, a run directory holds
-            no renders, or a page is asked for beside the options that measure.
+        SystemExit: If a method, a value, a channel or a palette is unknown, a file named is missing,
+            a manifest is malformed, two variants of the sweep share a name, a set of settings names a
+            setting the configuration lacks, a run cannot claim its folder, a run directory holds no renders,
+            a page is asked for beside the options that measure, or the samples cannot be fetched.
     """
-    given = CalibrationArguments(
-        config=arguments.config,
-        output=arguments.output,
-        methods=arguments.methods,
-        perceptual_exponents=arguments.perceptual_exponents,
-        temporal_weights=arguments.temporal_weights,
-        channels=arguments.channels,
-        board=arguments.board,
-        palette=arguments.palette,
-        open_page=arguments.open_page,
-    )
+    given = CalibrationArguments.read(arguments)
+    if given.fetch_samples:
+        return _fetch()
 
     return _compare(given) if given.board is not None else _measure(given)
 
 
 def _measure(given: CalibrationArguments) -> int:
+    from sampletones_tools.calibration.fingerprint import ResumeRefusedError
+    from sampletones_tools.calibration.session import calibrate
+
+    request = _request(given)
+    try:
+        outcome = calibrate(request)
+    except ResumeRefusedError as error:
+        raise SystemExit(str(error)) from error
+
+    print(f"Report: {outcome.report.resolve().as_uri()}")
+    return _show(outcome.page, given.open_page)
+
+
+def _request(given: CalibrationArguments) -> CalibrationRequest:
+    """The run the options ask for, the packaged suite filling every part of the sweep they leave out.
+
+    Raises:
+        SystemExit: If a name or a value is unknown, a file named is missing, a manifest is malformed,
+            two variants of the sweep share a name, or a set of settings names a setting the
+            configuration lacks.
+    """
     from sampletones_application.utils.palette.catalog import DEFAULT_PALETTE_NAME
     from sampletones_core.headless.conversion.request import channels_named
     from sampletones_shared.utils.validation import describe_failure
+    from sampletones_tools.calibration.config.manifest import CorpusManifest
+    from sampletones_tools.calibration.config.settings import SettingsConfig
     from sampletones_tools.calibration.config.suite import SuiteConfig
-    from sampletones_tools.calibration.session import (
-        CalibrationRequest,
-        base_configuration,
-        calibrate,
-        default_output,
+    from sampletones_tools.calibration.corpus.reference import reference_catalog
+    from sampletones_tools.calibration.options import (
         floats_named,
+        levels_named,
+        measured_categories,
         methods_named,
+        settings_named,
     )
+    from sampletones_tools.calibration.session import CalibrationRequest, base_configuration, default_output
 
     suite = SuiteConfig.load()
     try:
-        request = CalibrationRequest(
-            base=base_configuration(given.config),
+        manifest = CorpusManifest.read(given.corpus) if given.corpus is not None else None
+        base = base_configuration(given.config)
+        return CalibrationRequest(
+            base=base,
             output=given.output if given.output is not None else default_output(),
             methods=methods_named(given.methods, suite.methods),
             perceptual_exponents=floats_named(given.perceptual_exponents, suite.perceptual_exponents),
             temporal_weights=floats_named(given.temporal_weights, suite.temporal_weights),
             channels=channels_named(given.channels) if given.channels is not None else list(suite.channels),
+            settings=settings_named(given.settings, suite.settings, list(SettingsConfig.load().settings)),
+            levels=levels_named(given.levels, suite.levels),
+            categories=measured_categories(given.categories, given.skip, reference_catalog(manifest)),
+            workers=given.workers if given.workers is not None else base.general.max_workers,
+            resume=given.resume,
+            corpus=given.corpus,
             palette=given.palette if given.palette is not None else DEFAULT_PALETTE_NAME,
         )
     except ValueError as error:
         raise SystemExit(describe_failure(error)) from error
-
-    outcome = calibrate(request)
-    print(f"Report: {outcome.report.resolve().as_uri()}")
-    return _show(outcome.page, given.open_page)
+    except FileNotFoundError as error:
+        raise SystemExit(str(error)) from error
 
 
 def _compare(given: CalibrationArguments) -> int:
@@ -140,6 +238,27 @@ def _compare(given: CalibrationArguments) -> int:
     return _show(page, given.open_page)
 
 
+def _fetch() -> int:
+    """Fetch the listening samples, ending with a note where a download fails.
+
+    Raises:
+        SystemExit: If a publisher cannot be reached, stops answering, answers malformed or cut short,
+            or holds a recording of another checksum.
+    """
+    from http.client import HTTPException
+
+    from sampletones_tools.calibration.config.samples import SamplesConfig
+    from sampletones_tools.calibration.samples import SAMPLES_DIRECTORY, SampleChecksumError, fetch_samples
+
+    try:
+        fetched = fetch_samples(SamplesConfig.load(), SAMPLES_DIRECTORY)
+    except (OSError, HTTPException, SampleChecksumError) as error:
+        raise SystemExit(f"The samples could not be fetched: {error}") from error
+
+    print(f"Samples: {len(fetched)} in {SAMPLES_DIRECTORY}")
+    return 0
+
+
 def _show(page: Path, wanted: bool) -> int:
     from sampletones_tools.calibration.board.browser import open_page
 
@@ -151,15 +270,14 @@ def _show(page: Path, wanted: bool) -> int:
 
 
 def _refuse_measuring(given: CalibrationArguments) -> None:
-    measuring = (
-        given.config,
-        given.methods,
-        given.perceptual_exponents,
-        given.temporal_weights,
-        given.channels,
-    )
-    if any(value is not None for value in measuring):
-        named = ", ".join(MEASURING_OPTIONS)
+    """Refuse a page over finished runs that is given an option that measures, naming every such option.
+
+    Raises:
+        SystemExit: If any option that measures is given.
+    """
+    measuring = given.measuring
+    if any(measuring.values()):
+        named = ", ".join(measuring)
         raise SystemExit(f"--board reads finished runs and measures nothing; it takes none of {named}.")
 
 

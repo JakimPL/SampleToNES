@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Final, Tuple
+from typing import Final, Tuple, Union
 from unittest.mock import MagicMock
 
 import numpy as np
@@ -12,8 +12,9 @@ from sampletones_core.constants.enums import SpectralDistance, SpectrumMethod
 from sampletones_core.fft import CyclicArray, Window
 from sampletones_core.reconstructions.criterion import Criterion
 from sampletones_core.reconstructions.criterion.metric import SpectralMetric
-from sampletones_core.reconstructions.criterion.spectral import spectral_floor
-from sampletones_shared.array import to_numpy
+from sampletones_core.reconstructions.criterion.spectral import spectral_floor, weighted_reference_energy
+from sampletones_core.structures.histogram import Histogram
+from sampletones_shared.array import to_numpy, xp
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 
@@ -31,6 +32,9 @@ SECOND_ORDER_TOLERANCE: Final[float] = 1e-3
 CYCLE_SAMPLES: Final[int] = 97
 CANDIDATE_SEED: Final[int] = 7
 CONSTANT_LEVEL: Final[float] = 0.05
+SHORTFALL_WEIGHT: Final[float] = 0.25
+FULL_WEIGHT: Final[float] = 1.0
+OVERSHOOT: Final[float] = 0.5
 
 
 def _criterion_with_distance(
@@ -47,6 +51,11 @@ def _criterion_with_distance(
         }
     )
     return Criterion(updated_config, window, LONG_SIGNAL_LENGTH)
+
+
+def _scalar(value: np.ndarray) -> float:
+    """The one value an array of one, or of none, holds."""
+    return float(np.asarray(to_numpy(value)).reshape(-1)[0])
 
 
 def _hiss(bins: int) -> np.ndarray:
@@ -286,6 +295,108 @@ class TestCriterionSpectralLoss:
         )
         silence, quiet_noise = to_numpy(criterion.spectral_loss(reference, candidates))
         assert silence < quiet_noise
+
+
+class TestASilentCandidate(BaseTestSuite):
+    """A silent candidate leaves the target's whole energy uncovered, so it scores that energy's share of the scale.
+
+    The scale is the target's weighted energy and its floor, so silence scores the energy over the energy
+    and the floor, under the squared and the absolute distance alike.
+    """
+
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        distance: SpectralDistance
+
+    test_cases = (
+        TestCase(label="squared", distance=SpectralDistance.SQUARED),
+        TestCase(label="absolute", distance=SpectralDistance.ABSOLUTE),
+    )
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
+    def test_silence_scores_the_share_of_the_scale_the_target_holds(
+        self, test_case: TestCase, config: Config, window: Window, bins: int
+    ) -> None:
+        criterion = _criterion_with_distance(config, window, test_case.distance)
+        reference = xp.asarray(np.linspace(0.1, 1.0, bins))
+        energy = _scalar(weighted_reference_energy(reference, criterion.weights, distance=test_case.distance))
+        floor = _scalar(spectral_floor(reference, metric=criterion.metric))
+
+        loss = _scalar(criterion.spectral_loss(reference, xp.zeros((1, bins))))
+
+        assert energy != pytest.approx(1.0)
+        assert loss == pytest.approx(energy / (energy + floor))
+
+
+class TestTheShortfallWeightedLoss(BaseTestSuite):
+    """A candidate's bins short of the target count at the weight given, and its bins beyond it in full.
+
+    A silent candidate falls short wherever the target sounds, so it costs the weight's share of its loss,
+    or the root of that share under the squared distance, whose terms add up under a root.
+    """
+
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        distance: SpectralDistance
+        silent_share: float
+
+    test_cases = (
+        TestCase(label="beta_divergence", distance=SpectralDistance.BETA_DIVERGENCE, silent_share=SHORTFALL_WEIGHT),
+        TestCase(label="absolute", distance=SpectralDistance.ABSOLUTE, silent_share=SHORTFALL_WEIGHT),
+        TestCase(label="squared", distance=SpectralDistance.SQUARED, silent_share=float(np.sqrt(SHORTFALL_WEIGHT))),
+    )
+
+    @staticmethod
+    def _reference(bins: int) -> np.ndarray:
+        """A target sounding in every bin, on the array backend the criterion computes on."""
+        return xp.asarray(np.linspace(0.1, 1.0, bins))
+
+    @staticmethod
+    def _candidates(reference: np.ndarray) -> np.ndarray:
+        """Silence, and the target with sound added in every bin."""
+        return xp.stack([xp.zeros_like(reference), reference + OVERSHOOT])
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
+    def test_a_full_weight_reads_the_spectral_loss(
+        self, test_case: TestCase, config: Config, window: Window, bins: int
+    ) -> None:
+        criterion = _criterion_with_distance(config, window, test_case.distance)
+        reference = self._reference(bins)
+        candidates = self._candidates(reference)
+
+        weighted = to_numpy(criterion.shortfall_weighted_loss(reference, candidates, FULL_WEIGHT))
+
+        assert list(weighted) == pytest.approx(list(to_numpy(criterion.spectral_loss(reference, candidates))))
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
+    def test_silence_costs_the_weight_s_share_and_an_overshoot_its_whole_loss(
+        self, test_case: TestCase, config: Config, window: Window, bins: int
+    ) -> None:
+        criterion = _criterion_with_distance(config, window, test_case.distance)
+        reference = self._reference(bins)
+        candidates = self._candidates(reference)
+
+        silent, overshooting = to_numpy(criterion.shortfall_weighted_loss(reference, candidates, SHORTFALL_WEIGHT))
+
+        full_silent, full_overshooting = to_numpy(criterion.spectral_loss(reference, candidates))
+        assert silent == pytest.approx(test_case.silent_share * full_silent)
+        assert overshooting == pytest.approx(full_overshooting)
+
+    @pytest.mark.parametrize("as_histogram", [False, True], ids=["host_arrays", "histogram"])
+    def test_host_values_score_as_values_on_the_array_backend_do(
+        self, as_histogram: bool, criterion: Criterion, bins: int
+    ) -> None:
+        """The loss takes a histogram or its values wherever they are held, as the spectral loss does."""
+        reference = to_numpy(self._reference(bins))
+        candidates = to_numpy(self._candidates(xp.asarray(reference)))
+        target: Union[np.ndarray, Histogram] = reference
+        if as_histogram:
+            target = Histogram(edges=np.arange(bins + 1, dtype=reference.dtype), values=reference)
+
+        held = to_numpy(criterion.shortfall_weighted_loss(target, candidates, SHORTFALL_WEIGHT))
+
+        on_backend = criterion.shortfall_weighted_loss(xp.asarray(reference), xp.asarray(candidates), SHORTFALL_WEIGHT)
+        assert list(held) == pytest.approx(list(to_numpy(on_backend)))
 
 
 class TestCriterionBetaDivergenceAtTheFloor(BaseTestSuite):

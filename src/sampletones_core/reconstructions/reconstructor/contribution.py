@@ -3,6 +3,8 @@ from typing import Self
 
 import numpy as np
 
+from sampletones_core.fft import Fragment
+
 
 @dataclass(frozen=True)
 class Contribution:
@@ -19,11 +21,13 @@ class Contribution:
         power: The candidate's power density per bin, read at unit drive.
         expectation: The waveform the candidate is expected to render over the frame.
         variance: The per-sample variance about that waveform.
+        sounding: Whether the candidate sounds a note, which a frame's cost charges the channel for.
     """
 
     power: np.ndarray
     expectation: np.ndarray
     variance: float
+    sounding: bool
 
     @classmethod
     def silence(cls, bins: int, frame_length: int) -> Self:
@@ -32,4 +36,10 @@ class Contribution:
             power=np.zeros(bins, dtype=np.float64),
             expectation=np.zeros(frame_length, dtype=np.float64),
             variance=0.0,
+            sounding=False,
         )
+
+    @classmethod
+    def silence_of(cls, fragment: Fragment) -> Self:
+        """The contribution of a channel sounding nothing in ``fragment``, over its bins and its samples."""
+        return cls.silence(len(fragment.feature.values), fragment.audio.shape[0])

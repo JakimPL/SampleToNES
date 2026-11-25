@@ -1,13 +1,7 @@
 from dataclasses import dataclass
-from typing import Dict, FrozenSet, List, Mapping, NamedTuple, Optional, Sequence, Set, Tuple
+from typing import Dict, List, Mapping, NamedTuple, Optional, Sequence, Set, Tuple
 
-import numpy as np
-
-from sampletones_core.constants.algorithm import (
-    RESTING_FRAME_COST,
-    STEM_ACTIVITY_FLOOR,
-    UNIT_DRIVE,
-)
+from sampletones_core.constants.algorithm import UNIT_DRIVE
 from sampletones_core.constants.enums import (
     ChannelName,
     GeneratorClassName,
@@ -24,6 +18,7 @@ from sampletones_core.reconstructions.reconstructor.matching import (
 )
 from sampletones_core.reconstructions.reconstructor.mix import FrameMix
 from sampletones_core.reconstructions.reconstructor.stems.assignment.columns import column_groups
+from sampletones_core.reconstructions.reconstructor.stems.assignment.rests import resting, sounding_stems
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import (
     StemsConfig,
 )
@@ -34,7 +29,6 @@ from sampletones_core.reconstructions.reconstructor.stems.models.frame_assignmen
     StemFrameAssignment,
 )
 from sampletones_core.reconstructions.reconstructor.stems.models.rest import StemRest
-from sampletones_shared.array import to_numpy
 
 
 @dataclass(frozen=True)
@@ -114,7 +108,7 @@ class AssignmentSession:
         covered = stems_config.covered_channels
         self.free_channels = [name for name in ChannelName.items() if name in covered]
         self.used_channels: Dict[int, int] = {entry.id: 0 for entry in stems_config.entries}
-        self.sounding = self._sounding_stems()
+        self.sounding = sounding_stems(fragments)
         self.mixes: Dict[int, FrameMix] = {stem_id: FrameMix.empty(fragments[stem_id]) for stem_id in self.sounding}
         self.frame_costs: Dict[int, float] = {
             stem_id: matcher.mix_cost(fragments[stem_id], mix) for stem_id, mix in self.mixes.items()
@@ -145,6 +139,7 @@ class AssignmentSession:
                 for scored in self.choices
             ),
             rests=self._rests(),
+            pools=(),
         )
 
     def _round_robin(self) -> None:
@@ -347,35 +342,7 @@ class AssignmentSession:
         if not self.free_channels:
             return ()
 
-        fragment = next(iter(self.fragments.values()))
-        silence = Contribution.silence(len(fragment.feature.values), fragment.audio.shape[0])
-        return tuple(
-            StemRest(
-                channel_name=channel_name,
-                column=(
-                    ScoredCandidate(
-                        instruction=self.channels[channel_name].get_instruction_type().null_instruction(),
-                        cost=RESTING_FRAME_COST,
-                        contribution=silence,
-                    ),
-                ),
-            )
-            for channel_name in self.free_channels
-        )
-
-    def _sounding_stems(self) -> FrozenSet[int]:
-        """The stems whose own frame reaches a level a channel can render.
-
-        A frame quieter than the quietest note the hardware plays, measured against the working
-        level, holds nothing for a channel to sound. Its stem stands aside, so the channel goes
-        to a stem that does sound there or rests, and a recording silent through a passage keeps
-        that passage silent on the channels it holds.
-        """
-        return frozenset(
-            stem_id
-            for stem_id, fragment in self.fragments.items()
-            if float(np.max(np.abs(to_numpy(fragment.audio)), initial=0.0)) >= STEM_ACTIVITY_FLOOR
-        )
+        return resting(self.free_channels, self.channels, next(iter(self.fragments.values())))
 
     def _remaining_channels(
         self,

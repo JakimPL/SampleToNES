@@ -19,6 +19,7 @@ def _contribution(fragment: Fragment, scale: float) -> Contribution:
         power=np.full(bins, scale),
         expectation=np.full(frame_length, scale),
         variance=scale * VARIANCE,
+        sounding=True,
     )
 
 
@@ -30,6 +31,7 @@ class TestFrameMix:
         assert mix.expectation.shape == synthetic_fragment.audio.shape
         assert not np.any(mix.power) and not np.any(mix.expectation)
         assert mix.variance == 0.0
+        assert mix.sounding == 0
 
     def test_contributions_add_their_power_waveform_and_variance(self, synthetic_fragment: Fragment) -> None:
         first = _contribution(synthetic_fragment, 1.0)
@@ -40,6 +42,15 @@ class TestFrameMix:
         np.testing.assert_allclose(mix.power, first.power + second.power)
         np.testing.assert_allclose(mix.expectation, first.expectation + second.expectation)
         assert mix.variance == pytest.approx(3.0 * VARIANCE)
+
+    def test_a_mix_counts_its_sounding_contributions(self, synthetic_fragment: Fragment) -> None:
+        silent = Contribution.silence(len(synthetic_fragment.feature.values), synthetic_fragment.audio.shape[0])
+
+        mix = FrameMix.of(
+            synthetic_fragment, [_contribution(synthetic_fragment, 1.0), silent, _contribution(synthetic_fragment, 2.0)]
+        )
+
+        assert mix.sounding == 2
 
     def test_the_residual_waveform_is_what_the_mix_leaves_of_the_frame(self, synthetic_fragment: Fragment) -> None:
         contribution = _contribution(synthetic_fragment, 0.5)

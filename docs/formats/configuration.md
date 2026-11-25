@@ -22,6 +22,7 @@ Audio preprocessing and housekeeping.
 | `quantize` | quantize the input to fewer volume steps | `true` / `false` |
 | `quantization_levels` | number of levels when quantizing | integer ≥ 3 |
 | `min_pitch`, `max_pitch` | lowest and highest note the instruction library holds, which a change rebuilds | 24–119, lowest ≤ highest |
+| `level` | how the [working level](../concepts/reconstruction.md#34-the-working-level-coefficient) is set: from the frames' RMS levels, or moved onto a triangle line the frames hold | `coefficient` / `fitted` |
 | `coefficient_percentile` | percentile of the frames' RMS levels used to set the [working level](../concepts/reconstruction.md) | 0–100 |
 | `coefficient_audibility_floor` | fraction of the loudest frame's level below which a frame is left out of the working level | 0 < value ≤ 1 |
 | `max_workers` | worker processes used during reconstruction | integer ≥ 1 |
@@ -68,6 +69,7 @@ records them.
 | --- | --- | --- |
 | `spectral_loss_weight` | weight of the spectral term in the [criterion](../concepts/reconstruction.md) | ≥ 0 |
 | `temporal_loss_weight` | weight of the temporal term | ≥ 0 |
+| `channel_price` | what each sounding channel adds to a frame's cost, as a share of the frame's sound; a channel sounds only where it lowers the criterion by more | ≥ 0 |
 
 ### `generation.metric`
 
@@ -80,11 +82,19 @@ records them.
 | `silence_floor` | the power a frame is measured from when its own bins all lie under it, so a silent frame's score stays finite | > 0 |
 | `dynamic_range_decibels` | how far under a frame's loudest bin the comparison reaches | > 0 |
 
+### `generation.assignment`
+
+| Key | Meaning | Values |
+| --- | --- | --- |
+| `method` | how a frame's channels get their candidates: one channel at a time, or every note fitted at once with whole combinations compared; `joint` needs each channel held by one stem | `picks` / `joint` |
+| `neighbors` | how many times every frame is assigned again after a decode, among the notes its neighbors play, each pass decoded anew; needs `joint` | integer ≥ 0 |
+| `inertia` | per channel (`pulse1`, `pulse2`, `triangle`, `noise`): how many times the decoder's charges for changing from the frame before and to the frame after a frame's choice pays on that channel in the neighbor pass; `0` leaves the channel free, as short drum hits need; needs `neighbors` above `0` | number ≥ 0 each |
+
 ### `generation.decoder`
 
 | Key | Meaning | Values |
 | --- | --- | --- |
-| `selector` | search strategy | `greedy` / `viterbi` |
+| `selector` | search strategy; `combinations` decodes whole combinations of channels and needs `joint` | `greedy` / `viterbi` / `combinations` |
 | `top_k` | candidates kept per channel per frame | integer ≥ 1 |
 | `pitch_weight`, `volume_weight`, `timbre_weight`, `on_off_weight` | Viterbi transition costs for changing each dimension | ≥ 0 |
 

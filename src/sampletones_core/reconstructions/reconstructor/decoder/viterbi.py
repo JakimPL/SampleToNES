@@ -1,13 +1,13 @@
 import itertools
 from typing import List, Tuple
 
-import numpy as np
-
 from sampletones_core.configs import Config
 from sampletones_core.instructions import InstructionUnion
 
 from ..matching import ScoredCandidate
-from .base import ChannelLattice, Decoder, Lattices, Streams
+from .base import Alternatives, ChannelLattice, Decoder, Streams
+from .path import traced_back
+from .transition import TransitionWeights, transition_cost
 
 
 class ViterbiDecoder(Decoder):
@@ -18,22 +18,22 @@ class ViterbiDecoder(Decoder):
     candidate's own cost, moving between two candidates costs what changes between their
     instructions — pitch, volume, timbre, and turning a channel on or off. The path that
     minimizes the total holds a steady note where per-frame costs alone would flicker.
+
+    A tie goes to the earlier candidate of a column: a candidate is reached from the earliest of
+    equally cheap predecessors, and the path ends on the earliest of equally cheap last candidates.
+    A column lists a channel's silence ahead of an equal cost, so the silence takes such a tie.
     """
 
     def __init__(self, config: Config) -> None:
         super().__init__(config)
-        decoder = config.generation.decoder
-        self.pitch_weight = decoder.pitch_weight
-        self.volume_weight = decoder.volume_weight
-        self.timbre_weight = decoder.timbre_weight
-        self.on_off_weight = decoder.on_off_weight
+        self.weights = TransitionWeights.of(config)
 
     @property
     def lattice_width(self) -> int:
         return self.config.generation.decoder.top_k
 
-    def decode(self, lattices: Lattices) -> Streams:
-        return {channel_name: self._decode_channel(frames) for channel_name, frames in lattices.items()}
+    def decode(self, alternatives: Alternatives) -> Streams:
+        return {channel_name: self._decode_channel(frames) for channel_name, frames in alternatives.lattices.items()}
 
     def _decode_channel(self, frames: ChannelLattice) -> List[ScoredCandidate]:
         path = self._decode(frames)
@@ -44,7 +44,7 @@ class ViterbiDecoder(Decoder):
             return []
 
         backpointers, final_costs = self._forward_pass(frames)
-        return self._backtrack(backpointers, final_costs)
+        return traced_back(backpointers, final_costs)
 
     def _forward_pass(self, frames: ChannelLattice) -> Tuple[List[List[int]], List[float]]:
         costs = [state.cost for state in frames[0]]
@@ -72,52 +72,9 @@ class ViterbiDecoder(Decoder):
         best_index = 0
         best_cost = float("inf")
         for index, previous_state in enumerate(previous_states):
-            total = previous_costs[index] + self._transition_cost(previous_state.instruction, instruction)
+            total = previous_costs[index] + transition_cost(previous_state.instruction, instruction, self.weights)
             if total < best_cost:
                 best_cost = total
                 best_index = index
 
         return best_index, best_cost
-
-    def _backtrack(self, backpointers: List[List[int]], final_costs: List[float]) -> List[int]:
-        last = int(np.argmin(final_costs))
-        path = [last]
-        for layer in reversed(backpointers):
-            last = layer[last]
-            path.append(last)
-
-        path.reverse()
-        return path
-
-    def _transition_cost(self, previous: InstructionUnion, current: InstructionUnion) -> float:
-        if not previous.on and not current.on:
-            return 0.0
-
-        if previous.on != current.on:
-            return self.on_off_weight
-
-        cost = 0.0
-        cost += self.pitch_weight * self._distance(previous, current, "pitch")
-        cost += self.pitch_weight * self._distance(previous, current, "period")
-        cost += self.volume_weight * self._distance(previous, current, "volume")
-        cost += self.timbre_weight * self._mismatch(previous, current, "duty_cycle")
-        cost += self.timbre_weight * self._mismatch(previous, current, "short")
-        return cost
-
-    @staticmethod
-    def _distance(previous: InstructionUnion, current: InstructionUnion, field: str) -> float:
-        previous_value = getattr(previous, field, None)
-        current_value = getattr(current, field, None)
-        if previous_value is None or current_value is None:
-            return 0.0
-
-        return float(abs(int(previous_value) - int(current_value)))
-
-    @staticmethod
-    def _mismatch(previous: InstructionUnion, current: InstructionUnion, field: str) -> float:
-        previous_value = getattr(previous, field, None)
-        current_value = getattr(current, field, None)
-        if previous_value is None or current_value is None:
-            return 0.0
-
-        return 0.0 if previous_value == current_value else 1.0

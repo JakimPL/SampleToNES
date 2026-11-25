@@ -1,6 +1,6 @@
 from typing import Self, Tuple
 
-from pydantic import BaseModel, Field, PositiveInt
+from pydantic import BaseModel, Field, NonNegativeInt, PositiveInt
 
 from sampletones_shared.utils.serialization import load_yaml_model
 from sampletones_tools.calibration.paths import REFEREE_CONFIG_PATH
@@ -8,7 +8,8 @@ from sampletones_tools.calibration.paths import REFEREE_CONFIG_PATH
 
 class RefereeConfig(BaseModel, frozen=True):
     """
-    Tuning of the built-in referees, which share one band analysis.
+    Tuning of the built-in referees: the band analysis the audio referees share, the frames and bands
+    the contour referee reads, and the tolerance and the misplaced-note weight the transcription reads frames with.
 
     Values are loaded from the packaged `calibration/referee.yaml`, so referee
     scores stay comparable across calibration runs while remaining adjustable
@@ -48,6 +49,35 @@ class RefereeConfig(BaseModel, frozen=True):
     )
     level_matching: bool = Field(
         description="Whether the loudness-weighted referee matches the estimate's level before comparing shapes.",
+    )
+    contour_frame_rate: PositiveInt = Field(
+        description="Frames per second the contour referee measures levels over.",
+    )
+    contour_audible_decibels: float = Field(
+        gt=0.0,
+        description="Range below the recording's loudest frame the contour referee reads.",
+    )
+    contour_onset_frames: PositiveInt = Field(
+        description="The most frames at the start of each audible run the contour referee reads an onset over.",
+    )
+    contour_band_centers: Tuple[float, ...] = Field(
+        min_length=1,
+        description="Centers in Hz of the octave bands the contour referee balances.",
+    )
+    contour_band_floor_decibels: float = Field(
+        gt=0.0,
+        description="Range below the recording's fullest band the contour referee reads a band within.",
+    )
+    volume_tolerance: NonNegativeInt = Field(
+        description="Volume steps a conversion's frame may stand off a written frame by and still play it as written.",
+    )
+    misplaced_weight: float = Field(
+        ge=0.0,
+        le=1.0,
+        description=(
+            "What a written note played at its pitch on another channel kind weighs, a wrong frame weighing one: "
+            "such a note is wrong, though milder than a wrong note."
+        ),
     )
 
     @classmethod

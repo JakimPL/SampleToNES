@@ -1,86 +1,280 @@
+/*
+ * The listening page's own layout, drawn over the application's layout stylesheets, which hold
+ * every color and face. Each length the page chooses for itself is a variable here.
+ */
 :root {
+  /* A channel's bar, thin so a cell's channels stack beside its readings. */
   --bar-height: 6px;
+  --bar-radius: 2px;
+  /*
+   * A channel's lane: as tall as its square while every column of the group is closed, and as tall
+   * as its solo and mute clips once one opens.
+   */
+  --square-lane: 10px;
+  --bar-lane: 20px;
+  /* The version columns of a table, and those open; each table sets its count, each group its open ones. */
+  --columns: 1;
+  --open-columns: 0;
+  /* The width of each column, fixed so the tables of every family line up. */
+  --sound-width: 152px;
+  --recording-width: 104px;
+  --closed-width: 110px;
+  --open-width: 272px;
+  --change-width: 72px;
+  /* The width a cell's score and its nats keep, so a column's squares stand in one line. */
+  --reading-width: 4em;
+  /* The page's width, which holds every closed column and two open ones side by side. */
+  --board-width: 1600px;
+  /* The space between family cards, wider than within a card so the families read apart. */
+  --family-gap: calc(2 * var(--panel-gap));
+  /* The space between a swatch and what stands beside it, and between a cell's channels. */
+  --swatch-gap: 4px;
+  --channel-gap: 3px;
 }
 
+/* The page's column: the masthead over the groups, centered. */
 .board {
   display: flex;
   flex-direction: column;
   gap: var(--card-gap);
-  max-width: 1400px;
+  max-width: var(--board-width);
   margin: 0 auto;
 }
 
-.groups {
+/* Open all and Close all, in a row under the lead. */
+.toolbar {
   display: flex;
-  flex-direction: column;
-  gap: var(--card-gap);
+  gap: var(--item-spacing-x);
+  margin-top: calc(2 * var(--item-spacing-y));
 }
 
+/* The groups, and the family cards within each, stacked apart. */
+.groups,
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--family-gap);
+}
+
+/* The prefix a group's versions share, stated once above its cards. */
+.prefix {
+  margin: 0;
+  padding-inline: var(--card-padding-x);
+  color: var(--text-muted);
+}
+
+/* The keys' help, sitting within the status bar's height. */
 .status-bar p {
   margin: 0;
   padding-block: var(--item-spacing-y);
 }
 
-.card-header {
+/*
+ * A family card is a details element, laid out as a block so the browser shows and hides its
+ * contents as it opens and closes. The open summary's margin stands in for the card's gap.
+ */
+details.card {
+  display: block;
+}
+
+details.card[open] > summary {
+  margin-bottom: var(--item-spacing-y);
+}
+
+/* A family's header wraps its legend under the title where the page is narrow. */
+.family .card-header {
   flex-wrap: wrap;
 }
 
-.card-header .card-title {
-  flex: 1 0 auto;
+/* The title keeps its own width, so the count stands beside it and the legend takes the free space. */
+.family .card-title {
+  flex: none;
 }
 
+/* How many sounds the family lists, quieter than its title. */
+.count {
+  font-size: var(--size-sans-small);
+  color: var(--text-muted);
+}
+
+/* A small label in the monospaced face at normal weight: the legend, a category's heading, a sound's name. */
+.legend,
+.table tbody tr.category th,
+.sound b {
+  font-family: var(--font-mono);
+  font-size: var(--size-mono-small);
+  font-weight: 400;
+}
+
+/* The channels a family sounds, at the header's far end, muted and spelled as the channels name themselves. */
 .legend {
   display: flex;
   gap: calc(1.5 * var(--item-spacing-x));
   margin-left: auto;
   padding-left: var(--glyph-indent);
-  margin-right: var(--chevron-offset);
-  font-family: var(--font-mono);
-  font-size: var(--size-mono-small);
-  font-weight: 400;
   color: var(--text-muted);
   text-transform: none;
 }
 
+/* A legend entry: a swatch beside its channel's name. */
 .legend span {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--swatch-gap);
 }
 
+/*
+ * A family's table holds every column at its width, and grows wider than the page once its open
+ * columns need the room, its card scrolling sideways.
+ */
+.table.sounds {
+  table-layout: fixed;
+  min-width: calc(
+    var(--sound-width) + var(--recording-width) + var(--change-width) + (var(--columns) - var(--open-columns)) *
+      var(--closed-width) + var(--open-columns) * var(--open-width)
+  );
+}
+
+/*
+ * The fixed columns. The version columns share the width that remains, and once one opens, the
+ * closed ones keep their own width and the open ones share the rest.
+ */
+col.sound {
+  width: var(--sound-width);
+}
+
+.group.spread col.version:not(.open) {
+  width: var(--closed-width);
+}
+
+col.recording {
+  width: var(--recording-width);
+}
+
+col.change {
+  width: var(--change-width);
+}
+
+/* A category's heading row, set off from the striped rows of its sounds. */
+.table tbody tr.category th {
+  color: var(--heading);
+  background: var(--surface);
+  padding-top: calc(2 * var(--item-spacing-y));
+}
+
+/* A category's name and a sound's name stay in view while the table scrolls sideways. */
+.table tbody tr.category th span {
+  position: sticky;
+  left: var(--cell-padding-x);
+}
+
+.table.sounds th.sound,
+.table.sounds td.sound {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+}
+
+.table.sounds td.sound {
+  background: inherit;
+}
+
+/* The headings hang from the top, so the versions' chevrons stand in one line. */
+.table.sounds thead th {
+  vertical-align: top;
+}
+
+/* A version's heading opens and closes its column, its words stacked one per line. */
+.table.sounds th.version {
+  cursor: pointer;
+}
+
+.table.sounds th.version:hover {
+  background: var(--card-header-hover);
+}
+
+.column-toggle {
+  appearance: none;
+  margin: 0;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.column-toggle:focus-visible {
+  outline: 1px solid var(--focus);
+}
+
+/* The chevron, drawn in the application's icon face, as a card's is. */
+.column-chevron {
+  margin-right: var(--swatch-gap);
+  font-family: var(--font-icon);
+  font-size: var(--size-icon-tiny);
+}
+
+/*
+ * The row playing, outlined inside its edges so the table's scrolling clips none of it. The sound's
+ * cell stands over the row's left end, so it draws its part of the outline itself.
+ */
 .table tbody tr.playing {
   outline: 1px solid var(--heading);
   outline-offset: -1px;
 }
 
-.sound {
-  white-space: nowrap;
+.table tbody tr.playing td.sound {
+  box-shadow:
+    inset 1px 0 var(--heading),
+    inset 0 1px var(--heading),
+    inset 0 -1px var(--heading);
 }
 
+/* A sound's name, wrapping anywhere where a part of it outgrows the column. */
 .sound b {
-  font-family: var(--font-mono);
-  font-weight: 400;
-}
-
-.sound span {
   display: block;
-  font-size: var(--size-sans-small);
-  color: var(--text-muted);
+  overflow-wrap: anywhere;
 }
 
-.sound,
-td.change {
-  width: 1%;
+/* A row of several levels stacks its recordings, one per level. */
+td.recording .button:not(:only-child) {
+  display: block;
 }
 
+td.recording .button + .button {
+  margin-top: var(--channel-gap);
+}
+
+/*
+ * A version's heading and cells keep half the table's padding at their sides, so eight closed
+ * columns share a narrow page.
+ */
+.table.sounds th.version,
+.table.sounds td.version {
+  padding-inline: calc(var(--cell-padding-x) / 2);
+}
+
+/* A cell's play button, readings and lanes in one line. */
 .cell {
-  display: inline-flex;
-  align-items: flex-start;
-  gap: var(--item-spacing-x);
+  display: flex;
+  align-items: center;
+  gap: var(--swatch-gap);
 }
 
+/* The play button, drawn in the application's icon face and as narrow as its glyph. */
+.button.glyph-button {
+  flex: none;
+  padding-inline: var(--button-padding-y);
+  font-family: var(--font-icon);
+  font-size: var(--size-icon-tiny);
+}
+
+/* A cell's readings keep their width, the score over the nats from silence. */
 .reading {
-  min-width: 104px;
+  flex: none;
+  min-width: var(--reading-width);
   white-space: nowrap;
   font-family: var(--font-mono);
 }
@@ -92,38 +286,70 @@ td.change {
 
 .reading span {
   display: block;
-  font-size: var(--size-mono-small);
+  font-family: var(--font-sans);
+  font-size: var(--size-sans-small);
   color: var(--text-muted);
 }
 
-.channels {
-  display: flex;
-  flex: none;
-  flex-direction: column;
-  gap: 3px;
-  width: 150px;
-}
-
-.channel {
-  display: flex;
+/*
+ * A cell's lanes, a row per channel of the family at the group's lane height. A closed column shows
+ * the squares alone; an open one lines the squares, the solo and mute clips and the bars up in
+ * columns of their own across the cell's remaining width.
+ */
+.lanes {
+  --lane-height: var(--square-lane);
+  display: grid;
+  grid-auto-rows: var(--lane-height);
   align-items: center;
-  gap: 4px;
+  gap: var(--channel-gap) var(--swatch-gap);
 }
 
-.bar {
+.group.spread .lanes {
+  --lane-height: var(--bar-lane);
+}
+
+td.version.open .lanes {
   flex: 1;
   min-width: 0;
-  height: var(--bar-height);
-  background: var(--recess);
-  border-radius: 2px;
+  grid-template-columns: auto auto minmax(0, 1fr);
 }
 
+/* A lane lays its square, its clips and its bar straight into its cell's columns. */
+.lane {
+  display: contents;
+}
+
+td.version:not(.open) .lane > :not(.swatch) {
+  display: none;
+}
+
+/* The square of a channel the render leaves out, empty within its outline. */
+.swatch.empty {
+  box-shadow: inset 0 0 0 1px var(--table-border);
+}
+
+/* The solo and mute clips, as tall as the lane. */
+.parts {
+  display: flex;
+  align-self: stretch;
+  gap: var(--swatch-gap);
+}
+
+/* The bar fills the rest of the line, the recess showing through the frames the channel rests. */
+.bar {
+  height: var(--bar-height);
+  background: var(--recess);
+  border-radius: var(--bar-radius);
+}
+
+/* The change, right-aligned in the monospaced face so the signs and decimals line up. */
 td.change {
   white-space: nowrap;
   text-align: right;
   font-family: var(--font-mono);
 }
 
+/* The solo and mute letters, in the monospaced face. */
 .button.part {
   font-family: var(--font-mono);
   font-size: var(--size-mono-small);

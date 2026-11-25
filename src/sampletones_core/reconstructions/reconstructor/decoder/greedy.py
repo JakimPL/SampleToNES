@@ -1,6 +1,6 @@
 from sampletones_core.constants.algorithm import SINGLE_STATE_LATTICE_WIDTH
 
-from .base import Decoder, Lattices, Streams
+from .base import Alternatives, Decoder, Streams
 
 
 class GreedyDecoder(Decoder):
@@ -15,5 +15,7 @@ class GreedyDecoder(Decoder):
     def lattice_width(self) -> int:
         return SINGLE_STATE_LATTICE_WIDTH
 
-    def decode(self, lattices: Lattices) -> Streams:
-        return {channel_name: [column[0] for column in frames] for channel_name, frames in lattices.items()}
+    def decode(self, alternatives: Alternatives) -> Streams:
+        return {
+            channel_name: [column[0] for column in frames] for channel_name, frames in alternatives.lattices.items()
+        }

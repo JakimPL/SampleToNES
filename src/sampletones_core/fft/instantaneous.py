@@ -8,7 +8,7 @@ from sampletones_shared.constants.music import OCTAVE_SEMITONES
 
 from .cqt.frequencies import calculate_cqt_frequencies
 from .cqt.normalization import normalize_cqt_energy
-from .cqt.transform import calculate_cqt_frames
+from .cqt.transform import HOP_ALIGNED_OFFSET, calculate_cqt_frames, column_offset
 
 HARMONIC_COUNT: Final[int] = 5
 HARMONIC_ROOM: Final[float] = 2.0 ** (1.0 / (2 * OCTAVE_SEMITONES))
@@ -66,7 +66,15 @@ class InstantaneousPitch:
         cutoff: float = CQT_CUTOFF_FREQUENCY,
         bins_per_octave: int = BINS_PER_OCTAVE,
     ) -> None:
-        coefficients = calculate_cqt_frames(audio, sample_rate, hop_length, cutoff, None, bins_per_octave)
+        coefficients = calculate_cqt_frames(
+            audio,
+            sample_rate,
+            hop_length,
+            HOP_ALIGNED_OFFSET,
+            cutoff,
+            None,
+            bins_per_octave,
+        )
         self._magnitudes: np.ndarray = np.abs(coefficients)
         self._phases: np.ndarray = np.angle(coefficients)
         self._frequencies: np.ndarray = calculate_cqt_frequencies(
@@ -188,11 +196,11 @@ class InstantaneousPitch:
             return np.empty((0, 0))
 
         lag = hop_length // SHORT_LAG_DIVISOR
-        middle = hop_length // 2
+        middle = column_offset(hop_length)
         cutoff = float(self._frequencies[first])
         n_bins = len(self._frequencies) - first
-        opening = calculate_cqt_frames(audio[middle:], sample_rate, hop_length, cutoff, n_bins, bins_per_octave)
-        lagged = calculate_cqt_frames(audio[middle + lag :], sample_rate, hop_length, cutoff, n_bins, bins_per_octave)
+        opening = calculate_cqt_frames(audio, sample_rate, hop_length, middle, cutoff, n_bins, bins_per_octave)
+        lagged = calculate_cqt_frames(audio, sample_rate, hop_length, middle + lag, cutoff, n_bins, bins_per_octave)
         count = min(opening.shape[1], lagged.shape[1])
         frequencies = self._frequencies[first:, None]
         turned = np.angle(lagged[:, :count]) - np.angle(opening[:, :count])

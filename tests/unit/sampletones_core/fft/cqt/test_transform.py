@@ -8,7 +8,7 @@ from sampletones_core.constants.spectrum import BINS_PER_OCTAVE, CQT_CUTOFF_FREQ
 from sampletones_core.fft.cqt import transform as transform_module
 from sampletones_core.fft.cqt.frequencies import calculate_cqt_frequencies
 from sampletones_core.fft.cqt.kernel import build_cqt_kernel
-from sampletones_core.fft.cqt.transform import calculate_cqt, calculate_cqt_frames
+from sampletones_core.fft.cqt.transform import HOP_ALIGNED_OFFSET, calculate_cqt, calculate_cqt_frames
 from sampletones_core.fft.spectrum.cqt import calculate_cqt_spectrum_columns
 from sampletones_core.fft.utils import calculate_n_bins
 from tests.suite.base import BaseTestSuite
@@ -37,13 +37,13 @@ class TestForwardTransform:
         frequencies = _bin_frequencies()
         target = _bin_count() // 2
         signal = _tone(float(frequencies[target]), SAMPLE_RATE)
-        cqt = calculate_cqt_frames(signal, SAMPLE_RATE, HOP_LENGTH)
+        cqt = calculate_cqt_frames(signal, SAMPLE_RATE, HOP_LENGTH, HOP_ALIGNED_OFFSET)
         energy = np.mean(np.abs(cqt) ** 2, axis=1)
         assert int(np.argmax(energy)) == target
 
     def test_shape_and_complex_dtype(self) -> None:
         signal = _tone(440.0, SAMPLE_RATE)
-        cqt = calculate_cqt_frames(signal, SAMPLE_RATE, HOP_LENGTH)
+        cqt = calculate_cqt_frames(signal, SAMPLE_RATE, HOP_LENGTH, HOP_ALIGNED_OFFSET)
         assert cqt.shape == (_bin_count(), 1 + len(signal) // HOP_LENGTH)
         assert np.iscomplexobj(cqt)
 
@@ -70,14 +70,27 @@ class TestGatheringInBlocks(BaseTestSuite):
     @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
     def test_the_columns_equal_one_pass(self, test_case: TestCase, monkeypatch: pytest.MonkeyPatch) -> None:
         signal = _tone(440.0, 2 * SAMPLE_RATE)
-        whole = calculate_cqt_frames(signal, SAMPLE_RATE, HOP_LENGTH)
+        whole = calculate_cqt_frames(signal, SAMPLE_RATE, HOP_LENGTH, HOP_ALIGNED_OFFSET)
         kernel = build_cqt_kernel(SAMPLE_RATE, _bin_count(), CQT_CUTOFF_FREQUENCY, BINS_PER_OCTAVE, CQTWindow.HANN)
         monkeypatch.setattr(transform_module, "MAX_GATHERED_SAMPLES", test_case.columns_per_block * kernel.frame_length)
 
-        blocked = calculate_cqt_frames(signal, SAMPLE_RATE, HOP_LENGTH)
+        blocked = calculate_cqt_frames(signal, SAMPLE_RATE, HOP_LENGTH, HOP_ALIGNED_OFFSET)
 
         assert blocked.shape == whole.shape
         assert float(np.abs(blocked - whole).max()) <= ROUNDING_SHARE * float(np.abs(whole).max())
+
+
+class TestTheFrameColumnsReadTheWholeAudio(BaseTestSuite):
+    """Column ``i`` of the frame spectra centers on the middle of frame ``i``, and the first columns read the
+    audio from its first sample."""
+
+    def test_an_impulse_at_the_first_sample_reaches_the_first_column(self) -> None:
+        impulse = np.zeros(SAMPLE_RATE, dtype=np.float32)
+        impulse[0] = 1.0
+
+        spectra = calculate_cqt_spectrum_columns(impulse, SAMPLE_RATE, HOP_LENGTH)
+
+        assert float(spectra[0].values[0]) > 0.0
 
 
 class TestToneNormalization:
@@ -104,7 +117,7 @@ class TestLibrosaParity:
         rng = np.random.default_rng(0)
         signal = rng.standard_normal(SAMPLE_RATE).astype(np.float32)
 
-        ours = np.mean(np.abs(calculate_cqt_frames(signal, SAMPLE_RATE, HOP_LENGTH)) ** 2, axis=1)
+        ours = np.mean(np.abs(calculate_cqt_frames(signal, SAMPLE_RATE, HOP_LENGTH, HOP_ALIGNED_OFFSET)) ** 2, axis=1)
         reference = librosa.cqt(
             signal,
             sr=SAMPLE_RATE,

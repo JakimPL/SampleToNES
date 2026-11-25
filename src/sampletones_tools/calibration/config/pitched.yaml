@@ -1,0 +1,39 @@
+amplitude: 0.5
+decaying:
+  frequencies: [110.0, 220.0, 440.0, 880.0]
+  time_constants_seconds: [0.15, 0.4, 1.0]
+  seconds: 2.0
+vibrato:
+  frequencies: [110.0, 440.0]
+  sawtooth_frequency: 220.0
+  rate_hertz: 5.5
+  depths_cents: [25.0, 50.0, 100.0]
+  harmonics: 40
+  seconds: 2.0
+line:
+  pitches: [28, 31, 33, 34, 35, 38, 40, 43, 45, 52]
+  note_seconds: 0.3
+  sounding_share: 0.9
+  harmonics: 40
+voice:
+  pitches: [57, 60, 62, 64, 62, 60, 59, 57]
+  note_seconds: 0.4
+  sounding_share: 0.95
+  harmonics: 40
+  formants: [[700.0, 130.0], [1220.0, 70.0], [2600.0, 160.0]]
+  formant_floor: 0.05
+  rate_hertz: 5.5
+  depth_cents: 30.0
+pluck:
+  frequencies: [110.0, 220.0]
+  time_constant_seconds: 0.6
+  harmonics: 20
+  seconds: 1.5
+band:
+  bass_level: 0.6
+  voice_level: 0.5
+  drums_level: 0.6
+  hits:
+    - { period_seconds: 0.6, decay_seconds: 0.08, delay_seconds: 0.0, level: 1.0 }
+    - { period_seconds: 0.6, decay_seconds: 0.05, delay_seconds: 0.3, level: 0.7 }
+    - { period_seconds: 0.15, decay_seconds: 0.01, delay_seconds: 0.0, level: 0.3 }

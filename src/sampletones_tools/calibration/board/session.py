@@ -12,6 +12,7 @@ from .clips import clip_store
 from .composition import compose_page
 from .data import data_script
 from .layout import DATA_FILE, PAGE_DIRECTORY
+from .model import BoardGlyphs
 from .reading import read_runs
 
 PAGE_TITLE: Final[str] = "Calibration"
@@ -41,9 +42,9 @@ def build_board(request: BoardRequest) -> Path:
 
     Everything the page needs travels with it: the web layout drawn from the application's own
     configuration in the requested palette, the application's faces inside a stylesheet, and the
-    run's contents as data. A page written into the run it
-    reports plays that run's clips where they lie; anywhere else it carries copies, so either page
-    opens straight from the folder it was written into.
+    run's contents as data. A page written into the run it reports plays that run's clips where they
+    lie; anywhere else it carries copies, so either page opens straight from the folder it was
+    written into.
 
     Args:
         request: The runs the page reports, where it goes, and the palette it is drawn in.
@@ -52,12 +53,23 @@ def build_board(request: BoardRequest) -> Path:
         Path: The page, the file a reader opens.
 
     Raises:
-        FileNotFoundError: If a run directory holds no renders, or the package a page file.
+        FileNotFoundError: If a run directory holds no renders or no fingerprint, or the package a page
+            file.
         KeyError: If the build ships no palette of the requested name.
     """
     runs = read_runs(request.runs)
     design = ApplicationDesign.load(request.palette)
     request.output.mkdir(parents=True, exist_ok=True)
-    page = compose_page(runs, clip_store(runs, request.output), request.title, design.glyphs.headers.reconstruction)
+    page = compose_page(runs, clip_store(runs, request.output), request.title, _page_glyphs(design))
     write_layout(request.output / PAGE_DIRECTORY, design)
     return write_assets(request.output, {DATA_FILE: data_script(page)})
+
+
+def _page_glyphs(design: ApplicationDesign) -> BoardGlyphs:
+    """The application's own glyphs for the page: the reconstruction header, the card chevrons and play."""
+    return BoardGlyphs(
+        header=design.glyphs.headers.reconstruction,
+        expanded=design.glyphs.common.expanded,
+        collapsed=design.glyphs.common.collapsed,
+        play=design.glyphs.player.play,
+    )

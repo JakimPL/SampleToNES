@@ -8,13 +8,27 @@ from sampletones_core.constants.enums import ChannelName
 from sampletones_core.instructions import InstructionUnion, NoiseInstruction, PulseInstruction
 from sampletones_shared.paths.extensions import EXT_FILE_FLAC, EXT_FILE_JSON
 from sampletones_shared.utils.system.paths import get_filename
-from sampletones_tools.calibration.layout import RENDERS_DIRECTORY, combination_name
+from sampletones_tools.calibration.config.level import VariantLevel
+from sampletones_tools.calibration.fingerprint import FINGERPRINT_FILE
+from sampletones_tools.calibration.layout import (
+    CORPUS_DIRECTORY,
+    RECORDINGS_DIRECTORY,
+    RENDERS_DIRECTORY,
+    combination_name,
+)
 from sampletones_tools.calibration.renders import (
+    UNFILED_FAMILY,
+    UNRECORDED_LEVEL,
     RenderRecord,
     channel_subsets,
+    clear_renders,
     item_directory,
+    read_record,
+    recording_path,
     sounding_timelines,
     write_channel_renders,
+    write_record,
+    write_recording,
     write_render,
 )
 
@@ -58,6 +72,114 @@ class TestWriteRender:
         rendered, sample_rate = read_wave(directory / get_filename(record.item, EXT_FILE_FLAC))
         assert sample_rate == SAMPLE_RATE
         assert np.allclose(rendered, audio, atol=QUANTIZATION_TOLERANCE)
+
+
+class TestWriteRecord:
+    def test_a_record_stands_alone_without_audio(self, tmp_path: Path) -> None:
+        record = RenderRecord(
+            variant=VARIANT,
+            item=ITEM,
+            position=0,
+            family="notes",
+            category="notes-pulse",
+            listed=False,
+            timelines={"pulse1": "11"},
+            judgments={"referee": {"score": 1.0}},
+            silence={"referee": 50.0},
+        )
+
+        write_record(tmp_path, record)
+
+        directory = tmp_path / RENDERS_DIRECTORY / VARIANT
+        assert sorted(path.name for path in directory.iterdir()) == [get_filename(ITEM, EXT_FILE_JSON)]
+
+    def test_a_record_written_before_families_reads_as_unfiled_and_listed(self) -> None:
+        older = (
+            '{"variant": "fft-pe1", "item": "tone-a", "position": 0, "category": "tone", '
+            '"timelines": {}, "judgments": {}, "silence": {}}'
+        )
+
+        record = RenderRecord.model_validate_json(older)
+
+        assert (record.family, record.listed) == (UNFILED_FAMILY, True)
+
+    def test_a_record_written_before_records_kept_their_level_reads_at_the_unrecorded_level(self) -> None:
+        older = (
+            '{"variant": "fft-pe1", "item": "tone-a", "position": 0, "family": "sines", "category": "tone", '
+            '"listed": true, "timelines": {}, "judgments": {}, "silence": {}}'
+        )
+
+        assert RenderRecord.model_validate_json(older).level == UNRECORDED_LEVEL
+
+
+class TestRecordings:
+    def test_the_default_level_keeps_its_recordings_directly_in_the_run_s_recordings(self, tmp_path: Path) -> None:
+        path = recording_path(tmp_path, VariantLevel.DEFAULT, ITEM)
+
+        assert path == tmp_path / RECORDINGS_DIRECTORY / get_filename(ITEM, EXT_FILE_FLAC)
+
+    def test_every_other_level_keeps_its_recordings_in_a_directory_named_after_it(self, tmp_path: Path) -> None:
+        path = recording_path(tmp_path, VariantLevel.TRUE, ITEM)
+
+        assert path == tmp_path / RECORDINGS_DIRECTORY / VariantLevel.TRUE.value / get_filename(ITEM, EXT_FILE_FLAC)
+
+    def test_a_recording_at_each_level_stands_beside_the_other(self, tmp_path: Path) -> None:
+        audio = np.linspace(-0.5, 0.5, SAMPLE_RATE // 8)
+        levels = {VariantLevel.DEFAULT: audio, VariantLevel.TRUE: audio / 4}
+        for level, scaled in levels.items():
+            write_recording(tmp_path, level, ITEM, scaled, SAMPLE_RATE)
+
+        for level, scaled in levels.items():
+            recording, _ = read_wave(recording_path(tmp_path, level, ITEM))
+            assert np.allclose(recording, scaled, atol=QUANTIZATION_TOLERANCE)
+
+
+class TestClearRenders:
+    def test_the_renders_and_the_recordings_go_and_the_rest_of_the_run_stays(self, tmp_path: Path) -> None:
+        record = RenderRecord(
+            variant=VARIANT,
+            item=ITEM,
+            position=0,
+            category="tone",
+            timelines={},
+            judgments={},
+            silence={},
+        )
+        write_record(tmp_path, record)
+        write_recording(tmp_path, VariantLevel.TRUE, ITEM, np.zeros(SAMPLE_RATE // 8), SAMPLE_RATE)
+        (tmp_path / CORPUS_DIRECTORY).mkdir()
+        (tmp_path / FINGERPRINT_FILE).write_text("{}", encoding="utf-8")
+
+        clear_renders(tmp_path)
+
+        assert sorted(path.name for path in tmp_path.iterdir()) == sorted((CORPUS_DIRECTORY, FINGERPRINT_FILE))
+        assert read_record(tmp_path, VARIANT, ITEM) is None
+
+    def test_a_directory_holding_no_run_is_left_as_it_stands(self, tmp_path: Path) -> None:
+        clear_renders(tmp_path)
+
+        assert list(tmp_path.iterdir()) == []
+
+
+class TestReadRecord:
+    def test_a_record_written_reads_back_unchanged(self, tmp_path: Path) -> None:
+        record = RenderRecord(
+            variant=VARIANT,
+            item=ITEM,
+            position=2,
+            family="notes",
+            category="notes-pulse",
+            listed=False,
+            timelines={"pulse1": "10"},
+            judgments={"referee": {"score": 1.0, "level": -0.5}},
+            silence={"referee": 50.0},
+        )
+        write_record(tmp_path, record)
+
+        assert read_record(tmp_path, VARIANT, ITEM) == record
+
+    def test_a_record_never_written_reads_as_none(self, tmp_path: Path) -> None:
+        assert read_record(tmp_path, VARIANT, ITEM) is None
 
 
 class TestChannelSubsets:

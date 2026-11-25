@@ -30,7 +30,9 @@ also builds the instruction libraries it needs.
 With no options, the run measures the program's default settings under the packaged suite:
 
 - Every spectrum method: `fft`, `logfft` and `cqt`.
-- The channels pulse 1, triangle and noise.
+- The channels pulse 1, triangle and noise for the synthetic sounds. The sounds written as NES frames
+  are converted over all four channels.
+- Every category of reference sound.
 - Every other setting at its default value.
 
 A *variant* is one configuration the run measured, named after its distinguishing settings. For
@@ -51,11 +53,17 @@ listening page.
 | `index.html` | the listening page, which opens by double-click |
 | `report.md` | the scores, as tables |
 | `report.csv` | every score, one per row, for your own analysis |
-| `renders/<variant>/` | each reconstruction as a FLAC file, and a JSON file with its scores and the frames each channel plays |
-| `renders/<variant>/<sound>/` | the same reconstruction cut by channel, one file per combination |
+| `run.json` | what the run measures, which `--resume` checks before it goes on, and the order of its variants, which the page's columns follow |
+| `renders/<variant>/` | a JSON file per reconstruction with its scores and the frames each channel plays, and a FLAC file of each listed one |
+| `renders/<variant>/<sound>/` | each listed reconstruction cut by channel, one file per combination |
 | `recordings/` | each reference sound, as the run prepared it for reconstruction: at the library's sample rate and the level the conversion matched |
+| `recordings/true/` | each reference sound as a run with `--levels true` prepared it, at the level its file holds |
 | `corpus/` | the reference sounds as generated |
 | `page/` | the stylesheet, the script and the palette the page reads |
+
+A new run into a folder an earlier run used clears that run's `renders` and `recordings` first, so the
+folder holds one run's results. `--resume` keeps them. A folder holding `renders` or `recordings` with no
+`run.json` beside them holds files no run made, so a run leaves it as it is and asks for another folder.
 
 The audio is FLAC, which is lossless and about a third of the size the same audio takes as WAV. A
 default run writes about 35 MB. A run of four channels writes more, because a reconstruction of four
@@ -63,27 +71,54 @@ channels is cut into fourteen combinations and one of three channels into six.
 
 ## Listen on the page
 
-Every run writes `index.html` and opens it when it ends. The page has one row per reference sound and
-one column per variant. Each cell has:
+Every run writes `index.html` and opens it when it ends. The page has one card per
+[family](#the-reference-sounds), and clicking a card's heading opens or closes it. The first family
+starts open, and **Open all** and **Close all** open or close every card at once. A card's heading also
+says how many sounds the family lists and which channels play them.
 
-- **play**, which sounds the whole reconstruction from its beginning.
-- The score under it. The line below the score says how much of the distance between silence and the
-  recording the reconstruction covers, or **past silence** where silence scores closer than the
-  reconstruction does.
-- One bar per channel, showing the frames that channel plays, in the channel's own color.
+Inside a card, each category of sounds has its own heading. Each row is one reference sound, with a
+**recording** button that plays the original, and each column is one variant. A run of several
+[levels](#custom-runs) gives each row one such button per level, named `default` and `true`, since each
+level prepares the original at a level of its own.
+
+When every variant's name starts with the same words, such as `cqt-pe1`, a line above the cards states
+them once. The column headings show only the rest of the name, one word per line. Point at a heading to
+see the whole name. The variant named by the shared words alone is called **base**.
+
+Each cell has:
+
+- **▶**, which plays the whole reconstruction from its beginning.
+- The score beside it, with its sign turned, so higher is closer to the recording and zero is exact.
+  The line below the score says how far the reconstruction stands from silence
+  toward the recording, in nats: the natural logarithm of silence's score over the reconstruction's.
+  Zero is as close as silence, each nat brings the reconstruction about 2.7 times closer to the
+  recording, and a value below zero stands farther from it than silence does. An exact reconstruction
+  reads **exact**.
+- One square per channel the family plays. A square is filled in the channel's own color where the
+  reconstruction plays that channel, and empty where that channel is unused. Each channel keeps the same
+  place in every cell of a family, so you can compare a row across its columns.
+
+The last column shows the change from the first column to the last. A rise means the last variant is
+closer to the recording.
+
+Every column starts closed. Click a column's heading to open it in every card of the tab. Click it again
+to close it. An open column adds a bar beside each square, showing the frames where that channel plays.
+When the open columns are wider than the page, the table scrolls sideways and the sound names stay in
+view.
 
 Beside each bar, **S** plays that channel alone and **M** plays every other channel. You hear what one
 channel contributes and what the rest sound like without it. Both are separate recordings the run wrote,
 so switching between them is exact.
 
-<kbd>Space</kbd> pauses and resumes, <kbd>&larr;</kbd> and <kbd>&rarr;</kbd> move across one
-sound's versions, and <kbd>&uarr;</kbd> and <kbd>&darr;</kbd> move to another sound.
+<kbd>Space</kbd> pauses and resumes. <kbd>&larr;</kbd> and <kbd>&rarr;</kbd> move across one sound's
+versions and across the **S** and **M** buttons of the open columns. <kbd>&uarr;</kbd> and
+<kbd>&darr;</kbd> move to another sound in the open cards.
 
 The page is drawn in the program's own colors. `--palette NAME` draws it in another of the
 program's palettes, and `--no-open` leaves it closed and prints its link alone.
 
-A render plays at the same level as its recording, so a quieter render sounds quieter. You can also
-play any file in the run folder in an audio player of your own.
+A render plays at the same level as the recording of its own level, so a quieter render sounds quieter.
+You can also play any file in the run folder in an audio player of your own.
 
 Beside each render, a JSON file of the same name has:
 
@@ -98,8 +133,19 @@ A render that scores worse than silence is a sign to listen before trusting the 
 A *referee* is a method that scores a reconstruction against its original: zero for identical signals,
 higher for a larger audible difference. [How it judges](#how-it-judges) describes them.
 
-`report.md` has one section per referee. Each section starts with a table: one row per variant, one
-column per category of reference sound, and the overall mean last. Lower is better.
+`report.md` has one section per [family](#the-reference-sounds) of reference sounds, and in it one
+subsection per referee. Each subsection starts with a table of the referee's score: one row per
+variant, one column per category of the family, and the family's mean last. The score is lower-better:
+a lower score is closer to the original. Each family is read on its own terms, so a mean spans one
+family.
+
+Each further table holds one of the referee's readings, and reads as the referee's section in
+[how it judges](#how-it-judges) describes. Most readings are lower-better too. These read otherwise:
+
+- Signed differences, closest at zero: `level` of `mr-loudness-dB`; `spread`, `onset` and the `band-`
+  readings of `contour`; `pulses`, `triangle` and `noise` of `balance`.
+- Closest at one: `scale` of `balance`.
+- Higher-better: `gains` and `pooled` of `search`.
 
 The `mr-loudness-dB` section adds a table for each of its readings:
 
@@ -110,6 +156,22 @@ The `mr-loudness-dB` section adds a table for each of its readings:
 
 The score is `missing` plus `added`. `level` is reported separately.
 
+Every audio referee also has a `log-gap` table: the natural logarithm of the score over the score of
+silence, the nats the page shows with their sign turned, so lower is better here too. Zero means the
+render scores as silence does, and every step of one below it closes the remaining distance to the
+original by a factor of about 2.7. Its family mean weighs every sound by how far it closes the
+distance in proportion, so a few sounds far worse than silence move it no more than they differ.
+
+The `transcription`, `search`, `pitch`, `stability`, `balance` and `continuity` sections read the
+reconstruction's instructions against what a reference sound plays, so they cover only the sounds whose frames or
+pitches the run knows. A synthesized sound of a known pitch carries it as a line, frame by frame: the
+sines, the pulse waves, the tone under hiss and the bass under hi-hats (as one recording and as stems),
+the plucked tone, the crescendo, and the pitched `sines-` and `tones-` sounds. A sound counts as
+sounding its pitch while it stays within 40 dB of its full level, so a decay's quiet tail and a
+crescendo's quiet start hold no pitch.
+Their scores are shares of frames, from 0 to 1, except where the
+[referees](#the-truth-referees) say otherwise, and lower-better too.
+
 ## Custom runs
 
 Each option replaces one part of the default run. The rest stays as the suite sets it.
@@ -118,17 +180,143 @@ Each option replaces one part of the default run. The rest stays as the suite se
 |---|---|---|
 | `--config FILE` | Measures the settings in a configuration file instead of the defaults | the `config.json` in your [SampleToNES folder](../guide/files.md) holds your saved settings |
 | `--methods LIST` | The spectrum methods measured | `--methods cqt` |
-| `--channels LIST` | The channels every variant reconstructs with | `--channels pulse1,pulse2,triangle,noise` |
+| `--channels LIST` | The channels every variant reconstructs the synthetic sounds with | `--channels pulse1,pulse2,triangle,noise` |
+| `--settings LIST` | Named sets of settings measured beside the base configuration, one variant each; see [settings](#measure-a-setting) | `--settings greedy` |
+| `--levels LIST` | The levels the sounds are matched at: `default`, or `true` for the level a written sound's frames play at | `--levels default,true` |
+| `--categories LIST` | The categories of reference sounds measured | `--categories nes-pulse,nes-mix` |
+| `--skip LIST` | The families or categories of reference sounds left out | `--skip composites` |
+| `--workers N` | How many sounds are converted at once; without it, the `general.max_workers` of the configuration | `--workers 3` |
+| `--resume` | Takes up the run in `-o` where it stopped | `-o before --resume` |
+| `--corpus FILE` | Adds the sounds a manifest names to the packaged ones; see [your own sounds](#your-own-sounds) | `--corpus nesmdb.yaml` |
+| `--fetch-samples` | Downloads the [listening samples](#listening-samples) and measures nothing | `--fetch-samples` |
 | `--perceptual-exponents LIST` | The perceptual exponents measured, one variant each | `--perceptual-exponents 0.5,1` |
 | `--temporal-weights LIST` | The temporal loss weights measured, one variant each | `--temporal-weights 0.1,0.3` |
 | `-o DIR`, `--output DIR` | The folder the run writes into | `-o before` |
 | `--palette NAME` | The palette the listening page is drawn in | `--palette light` |
 | `--no-open` | Leaves the page closed | `--no-open` |
 
+A run writes `run.json` beside its report: what it measures and what measures it. It holds
+fingerprints of the variants, the channels, the sounds and the referees with their settings, and of the
+program: its version and its source code. With `--resume`, a run in the same folder measuring the same
+converts only the sounds it has no record of yet, so a run stopped halfway goes on from there. The
+channels may be named in any order. A folder holding a run measured otherwise, judged by other referees
+or made by another version is refused, with what differs. Any edit to the source code counts as another
+version, even between two releases.
+
 Lists are comma separated. Several lists multiply: `--methods fft,cqt --perceptual-exponents
-0.5,1` measures four variants, and the run takes about four times as long as one variant.
+0.5,1` measures four variants, and the run takes about four times as long as one variant. Each variant
+needs a name of its own, so a value named twice, such as `--methods cqt,cqt`, or two values written
+alike in a name, such as the exponents `0.5,0.5000001`, are refused before the run starts.
 
 From a copy of the source code, put `uv run` in front: `uv run sampletones calibration --methods cqt`.
+
+### Measure a setting
+
+`src/sampletones_tools/calibration/config/settings.yaml` names sets of settings, each written in the
+shape of the configuration file and holding only the values it changes. `--settings greedy` measures
+the base configuration and the base with the `greedy` set written over it, so every variant appears
+twice, once with `-greedy` at the end of its name. A set naming a setting the configuration lacks is
+refused before the run starts. The packaged sets:
+
+- `greedy`: the greedy decoder in place of the Viterbi one.
+- `range30`: the criterion read 30 dB under each frame's loudest bin.
+- `joint`: the [joint assignment](../concepts/reconstruction.md#52-assigning-channels-jointly), which fits
+  every note at once and compares whole combinations of channels.
+- `joint-price005`, `joint-price01`, `joint-price02`: the joint assignment with every sounding channel
+  charged 0.005, 0.01 or 0.02 of the frame's sound
+  ([`channel_price`](../concepts/reconstruction.md#4-scoring-a-candidate-the-criterion)).
+- `fitted`, `joint-fitted`: the working level read from a triangle line the frames hold
+  ([`level: fitted`](../concepts/reconstruction.md#34-the-working-level-coefficient)), with today's
+  assignment or the joint one.
+- `joint-combinations`, `joint-fitted-combinations`: the joint assignment decoded over
+  [whole combinations](../concepts/reconstruction.md#55-decoding-whole-combinations), at the working level
+  of today or the fitted one.
+- `joint-neighbors1`, `joint-neighbors2`, `joint-fitted-combinations-neighbors1`,
+  `joint-fitted-combinations-neighbors2`: every frame assigned again once or twice
+  [among its neighbors](../concepts/reconstruction.md#56-hearing-a-frame-among-its-neighbors).
+- `joint-fitted-combinations-neighbors1-tonal-inertia05`, `-tonal-inertia1`: the pass with the pulses and
+  the triangle kept to their neighbors at an inertia of 0.5 and 1, the noise free;
+  `joint-fitted-combinations-neighbors1-inertia05` keeps every channel at 0.5.
+
+`--levels true` matches every sound at the level its file holds, whatever working level its settings
+name, the fitted one included. For a sound written as NES frames that is the level the channels play
+its frames at, where the written frames fit exactly, so a reading taken there leaves the working level
+out: what remains is the search. Its variants end in `-true`.
+The level is meant for written sounds; a synthesized sound at its file's level is simply quieter or
+louder than a conversion would make it.
+
+## Listening samples
+
+The `samples` family holds short recordings of real sound, kept to listen to: how a reconstruction
+sounds on music beyond the corpus. The package names each one by where it is published, its checksum,
+the window heard, its license and the credit it asks for. The recordings themselves stay with their
+publishers:
+
+```
+sampletones calibration --fetch-samples
+```
+
+downloads every recording missing from the `calibration/samples` folder of your
+[SampleToNES folder](../guide/files.md), and checks each against its checksum. `make setup` runs it
+too, and goes on with a note where the network is out of reach. A run measures the recordings
+fetched, and notes any it lacks.
+
+| Sample | Recording | License |
+|---|---|---|
+| `sample-break` | "133BPM BREAKBEAT (Live Acoustic Kit) Loop 01" by djericmark, Freesound 724939, two bars | CC0 1.0 |
+| `sample-blackbird` | a common blackbird's song, xeno-canto XC815302 by steve, one phrase | CC BY-SA 4.0 |
+
+## Your own sounds
+
+A manifest names reference sounds kept on your own machine, which join the packaged ones with
+`--corpus FILE`. It is a YAML file with a list of `items`. Every path in it is read from the
+manifest's own folder.
+
+A manifest names two kinds of sound.
+
+**Recordings** are audio files of your own, one recording or several stems under a stems setup in the
+format `sampletones convert --stems` reads:
+
+```yaml
+items:
+  - kind: recording
+    name: song
+    family: composites
+    category: song
+    listed: true
+    sources: [stems/Vocals.wav, stems/Drums.wav, stems/Bass.wav, stems/Others.wav]
+    stems: stems/setup.json
+```
+
+`family` is `composites` for stems and `samples` for a single recording kept to listen to. A
+single recording leaves out `stems` and is converted over the run's channels.
+
+**NES-MDB pieces** come from [NES-MDB](https://github.com/chrisdonahue/nesmdb), a collection of NES game music
+transcribed from what the console's sound chip played. Download its MIDI archive yourself; the pieces
+are read straight out of it. [pretty_midi](https://github.com/craffel/pretty-midi), the library NES-MDB
+was written with, reads them. A copy of the source code set up for development has it. An installed copy
+needs the `calibration` dependency group for a run with pieces. See
+[dependencies](../development/release/dependencies.md#calibration).
+
+```yaml
+items:
+  - kind: nesmdb
+    name: castlevania-vampire-killer
+    archive: nesmdb_midi.tar.gz
+    member: nesmdb_midi/train/045_Castlevania_01_02VampireKiller.mid
+    start_frame: 0
+    frames: 448
+    split: review
+```
+
+A piece plays `frames` frames from `start_frame`, at the run's NES frequency, and joins the
+`sequences` family as a round trip: the run knows every frame it plays. `split` puts it in one of two
+categories:
+
+- `nesmdb-review`: pieces you listen to. The page lists them.
+- `nesmdb-held-out`: pieces kept out of listening. The run measures them and writes their records,
+  and no audio. A change that improves the review pieces counts once the held-out ones agree, since
+  nothing was tuned on them.
 
 ## Compare runs
 
@@ -154,26 +342,100 @@ for example a `git worktree`, into its own folder.
 
 ### The reference sounds
 
-The reference sounds are short synthetic clips, generated the same way on every run. Each category
-tests one kind of decision:
+The reference sounds are short clips, made the same way on every run. They come in families, which the
+report and the page present in this order:
 
-| Category | Sounds | What it tests |
+| Family | Sounds | Played exactly by the channels |
 |---|---|---|
-| `tone` | sines across the pitch range | pitch |
-| `timbre` | pulse waves of several duty cycles | the shape of a tone |
-| `noise` | white noise, and dark noise | noise without a pitch |
-| `mix` | a tone under hiss, and a bass under hi-hat ticks | a tone and noise together |
-| `transient` | a snare, a kick, a plucked tone | attacks and decays |
-| `dynamics` | a crescendo, and a loud burst dropping to a quiet hiss | following the level |
-| `polyphony` | a chord, and a melody over a snare | several voices at once |
+| `sines` | sine tones: steady, decaying, swinging in pitch, and a bass line | no |
+| `notes` | single notes of every channel, laid on a grid | yes |
+| `chords` | two to four channels held together | yes |
+| `sequences` | melodies, bass lines, drums and pieces written as NES frames | yes |
+| `tones` | sounds of other shapes: pulse waves, sawtooths, a vowel, plucks, noise, attacks, level changes | no |
+| `composites` | several sounds together | no |
+| `samples` | recordings of real sound, kept to listen to | no |
+
+The page lists a selection of each family. The run measures every sound, writes the audio of the
+listed ones, and keeps a record of the scores for the rest.
+
+Some sounds changed once. A run made before the change has no `pitch` reading of the `mix` sounds,
+and its readings of these categories compare only with runs of its own side:
+
+- `mix-stems` and `polyphony-stems`: their stems add up exactly to the composites they split, the same
+  noise and the same clipping included. Every reading of them changed, and the `mix-stems` sounds
+  gained the pitch line of their composites.
+- `mix`, `transient` and `dynamics`: the tone under hiss, the bass under hi-hats, the plucked tone and
+  the crescendo gained a pitch line, which the `pitch`, `stability` and `continuity` sections read.
+  Their audio stayed the same.
+
+The synthetic sounds are generated from oscillators, envelopes and noise. Each category tests one kind
+of decision:
+
+| Category | Family | Sounds | What it tests |
+|---|---|---|---|
+| `tone` | `sines` | sines across the pitch range | pitch |
+| `sines-decaying` | `sines` | sines at 110, 220, 440 and 880 Hz, struck once and left to decay at three speeds | holding one shape through a decay |
+| `sines-vibrato` | `sines` | sines at 110 and 440 Hz swinging 25, 50 and 100 cents, 5.5 times a second | following a vibrato |
+| `sines-line` | `sines` | a bass line from E1 to E3 of separated sine notes | a bass line, the lowest notes above all |
+| `timbre` | `tones` | pulse waves of several duty cycles, 33% among them | the shape of a tone |
+| `tones-line` | `tones` | the same bass line on a sawtooth | a bass line of a rich tone |
+| `tones-voice` | `tones` | a melody on a vowel-like tone, its pitch swinging slightly | a sung line |
+| `tones-pluck` | `tones` | plucked tones at 110 and 220 Hz | a decay whose timbre changes |
+| `tones-vibrato` | `tones` | a sawtooth at 220 Hz swinging 25, 50 and 100 cents | a vibrato on a rich tone |
+| `noise` | `tones` | white noise, and dark noise | noise without a pitch |
+| `transient` | `tones` | a snare, a kick, a plucked tone | attacks and decays |
+| `dynamics` | `tones` | a crescendo, and a loud burst dropping to a quiet hiss | following the level |
+| `mix` | `composites` | a tone under hiss, and a bass under hi-hat ticks | a tone and noise together |
+| `polyphony` | `composites` | a chord, and a melody over a snare | several voices at once |
+| `mix-stems`, `polyphony-stems` | `composites` | the same composites, the tone and the noise each a stem, adding up to the composite and carrying its truth | each part matched on the channels it may take |
+| `composites-band` | `composites` | the sawtooth bass, the vowel melody and a drum pattern, each a stem: the bass on the triangle, the melody on either pulse, the drums on the noise | a small band converted as stems |
+
+The `notes`, `chords` and `sequences` families are written out frame by frame, as instructions the
+four channels play, and rendered the way the channels play them. Each one is a *round trip*: the
+program could in principle play it back exactly, and the run knows every frame it should find. They use
+plain notes and volumes, with no bends or sweeps.
+
+The single notes are laid on a grid, each held for 36 frames and then silent for 12:
+
+| Category | Notes |
+|---|---|
+| `notes-pulse` | every perfect fourth from note 33 to 118, at volumes 15, 7, 3 and 1, with the 12.5% and 50% duty cycles and one of 25% and 75% in turn |
+| `notes-triangle` | every perfect fourth from note 33 to 118 |
+| `notes-noise` | all 16 periods in both modes, at volumes 15, 7, 3 and 1 |
+
+The page lists the loudest of them at every fourth pitch and every fifth period. `--skip notes` leaves
+the family out, which shortens a run considerably.
+
+| Category | Chords |
+|---|---|
+| `chords-two` | two pulses in a unison, third, fifth and octave; a pulse over a triangle bass; a tone and the noise |
+| `chords-three` | a triad on two pulses and the triangle, loud and quiet; two pulses and hiss |
+| `chords-four` | every channel at once |
+
+| Category | Sequences |
+|---|---|
+| `sequences-melody` | a pulse melody from C3 to C6, plucked notes, a triangle melody, and a fast passage of 6-frame notes |
+| `sequences-bass` | a triangle bass line from E1 to E3 |
+| `sequences-drums` | a kick, snare and hat pattern from the noise channel's decays |
+| `sequences-mixed` | a melody over a bass, two pulses in intervals, a chord progression, and a short piece on all four channels |
+
+A round trip is converted over all four channels, so the run also hears whether the channels a sound
+leaves out stay silent.
+
+Every chord and sequence, NES-MDB pieces included, is converted a second time channel by channel: each
+channel's frames become a stem of their own, held to that channel. Those conversions fall in the same
+categories with `-by-channel` added, such as `chords-two-by-channel`. Set beside the first conversion,
+they tell a failure to take the parts apart from a failure to match each part.
 
 ### The referees
 
 Referees score in their own way, separate from the reconstruction's own scoring, so a comparison stays
 fair when that scoring is what changed.
 
-Both built-in referees split each signal into bands spaced the way hearing spaces pitch, at several
-time resolutions, and compare the energy in each band in decibels.
+The referees below read the audio, except `ownership`, which reads the conversion alone.
+`mr-auditory-dB` and `mr-loudness-dB` split each signal into bands spaced the way hearing spaces pitch,
+at several time resolutions, and compare the energy in each band in decibels. `contour` reads the level
+of short frames and of octave bands.
 
 - **`mr-auditory-dB`** averages the difference over every band equally. It reads the balance of
   tone against noise across the whole spectrum. An empty band counts as much as a full one, so a clip
@@ -182,5 +444,100 @@ time resolutions, and compare the energy in each band in decibels.
   and silent bands barely count. It first brings the reconstruction to the original's level and
   reports the level difference on its own. Silence scores worst, and a clip with the right tone and
   some added noise scores between.
-- **`zimtohrli`** is a model of human hearing from Google. It joins the other two where it is
+- **`ownership`** reads a conversion of several stems from its instructions alone. It counts how often
+  each channel passes from one stem to another per second. A pause between one stem's stretches counts
+  for nothing. The score is the changes per second over every channel, and each channel's own reading
+  follows. A conversion of one recording has no reading.
+- **`contour`** follows the loudness of the recording over time and over the spectrum. Both are cut
+  into frames of 1/60 s, each measured as its level in decibels. Over the frames the recording sounds
+  in, the score is how far the render's levels stray from the recording's once a constant offset is
+  set aside, in decibels. Its readings:
+  - `spread`: the range of the render's levels less the recording's. Flattened dynamics read below
+    zero.
+  - `onset`: how much louder the render plays than the recording in the first frames of each stretch
+    the recording sounds in, up to three. An overshooting attack reads above zero.
+  - `band-63` to `band-8000`: the render's energy less the recording's in each octave band the
+    recording fills, in decibels. Read across, they draw any equalization the reconstruction adds.
+- **`zimtohrli`** is a model of human hearing from Google. It joins the audio referees where it is
   installed. See [dependencies](../development/release/dependencies.md#calibration).
+
+### The truth referees
+
+A sound written as NES frames comes with every frame it plays, and its tonal channels give the pitch it
+sounds in every frame. More referees read a reconstruction's instructions against that truth.
+They never listen, so they say *what* went wrong where the audio referees say how much it shows.
+
+- **`transcription`** counts the frames a channel plays as written. A frame counts wherever the
+  sound or the reconstruction plays the channel, so a channel the sound leaves silent and the
+  reconstruction sounds counts against it. A frame is played as written where both play it and every
+  field agrees: the note, the duty cycle, the noise period and mode, and the volume within one step. The
+  volume is read at the sound's own level, the played volume times the `scale` the
+  [`balance`](#the-truth-referees) reading reports, so a reconstruction at another working level is
+  judged on its level once, there. The 25% and 75% duty cycles count as one, since one wave is the
+  other turned upside down and sounds the same.
+  The two pulses sound the same mix whichever carries which line, so each frame pairs them the way
+  that agrees more. A written note played at its pitch on another kind of channel, such as a bass on a
+  pulse, is one mistake weighing less than a wrong note, as `misplaced_weight` in `referee.yaml` sets:
+  the channel leaving it off and the channel playing it count it once between them. A mistake either
+  channel makes besides counts as a frame of its own. The score is the weighted share of counted
+  frames played otherwise. Its readings:
+  - `missed`: written frames the reconstruction leaves silent.
+  - `misplaced`: written frames whose note another kind of channel plays.
+  - `spurious`: played frames the sound leaves silent.
+  - `note`, `duty`, `volume`, `period`, `mode`: frames both play where that field disagrees.
+- **`search`** reads where the reconstruction lost the notes a frame plays, before any note is bent. A
+  frame counts wherever the sound plays a channel. It is right where the decoded frame sounds the
+  written notes on the written kinds of channel: the two pulses one kind, two pulses in unison one note,
+  the noise left to `transcription`. Each frame the reconstruction gets wrong is lost at the first
+  stage that could no longer reach its notes. The score is the share of counted frames decoded wrong.
+  Its readings:
+  - `columns`: no choice of one candidate per channel forms the written notes. The right answer was
+    gone before any combination was built.
+  - `assignment`: the candidates could form them, and the picks the assignment made did not.
+  - `decoder`: the picks had them, and the decoder moved away.
+  - `gains`: frames the picks had wrong and the decoder put right.
+  - `misplaced`: wrong frames that sound each written pitch as many times as written, some on another
+    kind of channel.
+  - `unreached`: written notes no candidate offers on their kind of channel.
+  - `pooled`: frames whose pools of whole combinations can sound the written notes, one combination per
+    source. The [joint assignment](../concepts/reconstruction.md#52-assigning-channels-jointly) pools
+    them, and other assignments have no reading.
+  - `at-change`, `next-to-change`, `away-from-change`: the share decoded wrong among the frames at a
+    written note change (a tonal channel starts, stops or moves between the frame and the one beside
+    it), one frame from one, and further. A frame's analysis window reads its neighbors, so these say
+    where the window's reach costs notes.
+- **`pitch`** answers every frame a line of the sound plays with the best answer the tonal channels of
+  the reconstruction give then, whichever channel gives it. A note within half a semitone is on pitch.
+  It beats the right note in another octave, which beats a note a semitone off, which beats any other
+  note. The score is the share of frames not answered on pitch. Its readings are the share answered an
+  `octave` off (the right note in another octave), a `semitone` off, by a `wrong` note, or left
+  `silent`, and `cents`: how far the answers on pitch stand from the line, on average, in cents.
+- **`stability`** counts how often channels change: turning on or off (`toggles`), or moving to another
+  note or noise period while sounding (`moves`). The score is how many more changes per second the
+  reconstruction makes than the sound itself, the two readings together. A reconstruction that
+  flickers where the sound holds still scores high. Three more readings measure how far the sounding
+  channels move per second, beyond the sound's own motion:
+  - `pitch-motion`: semitones the sounding pitch travels, bends included, so a vibrato the
+    reconstruction follows counts as the sound's own.
+  - `level-motion`: decibels the volume of a sounding pulse or noise channel travels.
+  - `duty-switches`: changes of a sounding pulse's timbre, 25% and 75% being one.
+
+  The last two need the sound's own frames.
+- **`balance`** compares how the channels share the sound out. A part's share is its energy over
+  the energy of every part, the two pulses one part. The score is the share that would have to move
+  between parts to match the sound, from 0 to 1. Its readings:
+  - `pulses`, `triangle`, `noise`: each part's share played less its share written. A triangle
+    whose line went to a pulse reads below zero.
+  - `bass-on-pulse`: the share of the triangle's frames whose note a pulse plays, in any octave,
+    while the triangle plays another or none.
+  - `scale`: how much the reconstruction scaled the sound before matching it. A round trip matched
+    at the level the channels play it reads 1.
+- **`continuity`** asks whether each note of the sound comes back as one continuous sound. A note
+  is a run of frames a line holds one pitch through. In each of its frames the note is answered by
+  the tonal channel sounding closest to it, or by none. The score is the extra events per note: the
+  handovers, and the sounding runs beyond each note's first. A note left silent adds none, since
+  `pitch` reads it as silent. Its readings:
+  - `handovers`: changes of the answering channel, such as a triangle note a pulse takes over
+    halfway.
+  - `fragments`: separate sounding runs per note. A note heard whole has one; a dropout in the
+    middle makes two.

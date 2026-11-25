@@ -2,7 +2,17 @@ import json
 from typing import Tuple
 
 from sampletones_tools.calibration.board.data import DATA_GLOBAL, data_script
-from sampletones_tools.calibration.board.model import BoardCell, BoardChannel, BoardGroup, BoardPage, BoardRow
+from sampletones_tools.calibration.board.model import (
+    BoardCell,
+    BoardChannel,
+    BoardColumn,
+    BoardFamily,
+    BoardGlyphs,
+    BoardGroup,
+    BoardPage,
+    BoardRecording,
+    BoardRow,
+)
 
 PREFIX: Tuple[str, str] = (f"const {DATA_GLOBAL} = ", ";")
 
@@ -10,12 +20,19 @@ PREFIX: Tuple[str, str] = (f"const {DATA_GLOBAL} = ", ";")
 def page() -> BoardPage:
     channel = BoardChannel(name="noise", timeline="1100", solo="a.flac", mute="b.flac")
     cell = BoardCell(render="renders/cqt-pe1/tone-a.flac", score=9.5, silence=20.0, channels=(channel,))
-    row = BoardRow(item="tone-a", category="tone", recording="recordings/tone-a.flac", cells=(cell,))
-    group = BoardGroup(name="run-a", columns=("cqt-pe1",), rows=(row,))
+    recording = BoardRecording(level="default", clip="recordings/tone-a.flac")
+    row = BoardRow(item="tone-a", family="sines", category="tone", recordings=(recording,), cells=(cell,))
+    group = BoardGroup(
+        name="run-a",
+        prefix="",
+        columns=(BoardColumn(name="cqt-pe1", words=("cqt", "pe1")),),
+        families=(BoardFamily(name="sines", channels=("noise",)),),
+        rows=(row,),
+    )
     return BoardPage(
         title="Calibration",
         referee="mr-auditory-dB",
-        glyph="≈",
+        glyphs=BoardGlyphs(header="≈", expanded="▾", collapsed="▸", play="▶"),
         colors={"noise": "channel-noise"},
         groups=(group,),
     )

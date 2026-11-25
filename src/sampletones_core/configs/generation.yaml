@@ -7,6 +7,7 @@ calculation:
 weights:
   spectral_loss_weight: 0.8
   temporal_loss_weight: 0.2
+  channel_price: 0.0
 
 metric:
   spectral_distance: beta_divergence
@@ -15,6 +16,15 @@ metric:
   temporal_level_floor: 0.06666666666666667
   silence_floor: 0.0044444444444444444
   dynamic_range_decibels: 60.0
+
+assignment:
+  method: picks
+  neighbors: 0
+  inertia:
+    pulse1: 0.0
+    pulse2: 0.0
+    triangle: 0.0
+    noise: 0.0
 
 decoder:
   selector: viterbi

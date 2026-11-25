@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Dict, Final, List, Mapping, Optional, Sequence
+from typing import Any, Dict, List, Mapping, Optional, Sequence
 
 import numpy as np
 import pytest
@@ -7,45 +7,29 @@ import pytest
 from sampletones_core.configs import Config
 from sampletones_core.constants.algorithm import SINGLE_STATE_LATTICE_WIDTH, UNIT_DRIVE
 from sampletones_core.constants.enums import ChannelName, GeneratorClassName
-from sampletones_core.fft import Fragment
-from sampletones_core.fft.features import FeatureExtractor
+from sampletones_core.fft import Fragment, Window
+from sampletones_core.fft.features import get_feature_extractor
 from sampletones_core.generators import GeneratorUnion, get_generators_by_channels
 from sampletones_core.generators.render import render_instructions
 from sampletones_core.instructions import InstructionUnion
-from sampletones_core.library import InstructionLibraryData
+from sampletones_core.library import InstructionLibraryData, InstructionLibraryFragment
+from sampletones_core.reconstructions.reconstructor.candidates import CandidateProvider
 from sampletones_core.reconstructions.reconstructor.contribution import Contribution
+from sampletones_core.reconstructions.reconstructor.decoder.base import Streams
 from sampletones_core.reconstructions.reconstructor.matching import FrameMatcher, ScoredCandidate
 from sampletones_core.reconstructions.reconstructor.mix import FrameMix
+from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.catalog import KindCatalog
+from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.hearing import DrivenFeatures, SteadyHearing
+from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.layout import StemLayout
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_core.reconstructions.reconstructor.worker import ReconstructorWorker
 
-RENDERED_FRAMES: Final[int] = 5
+from ..conftest import JOINT_SIGNAL_LENGTH
 
 
 @pytest.fixture(scope="module")
 def matcher(worker: ReconstructorWorker) -> FrameMatcher:
     return worker.matcher
-
-
-@pytest.fixture(scope="module")
-def all_channels(config: Config) -> Dict[ChannelName, GeneratorUnion]:
-    return get_generators_by_channels(config, ChannelName.items())
-
-
-def rendered_fragment(
-    config: Config,
-    extractor: FeatureExtractor,
-    instructions: Mapping[ChannelName, InstructionUnion],
-) -> Fragment:
-    """A frame of the channels playing ``instructions`` together, taken from the middle of a held note."""
-    audio = sum(
-        (
-            render_instructions([instruction] * RENDERED_FRAMES, channel_name, config)
-            for channel_name, instruction in instructions.items()
-        ),
-        start=np.zeros(RENDERED_FRAMES * config.library.frame_length, dtype=np.float32),
-    )
-    return extractor.extract(audio)[RENDERED_FRAMES // 2]
 
 
 def audible_instruction_of(library_data: InstructionLibraryData, generator: GeneratorUnion) -> InstructionUnion:
@@ -153,6 +137,7 @@ def _scored_alone(
         spectral,
         (mix.expectation + contribution.expectation)[None, :],
         np.array([mix.variance + contribution.variance]),
+        np.array([mix.sounding + int(contribution.sounding)]),
     )[0]
     return ScoredCandidate(instruction=instruction, cost=float(cost), contribution=contribution)
 
@@ -170,3 +155,61 @@ def shared_frames(fragment: Fragment, stems_config: StemsConfig) -> Dict[int, Fr
     things deciding the frame, which is what a case using this states.
     """
     return {entry.id: fragment for entry in stems_config.entries}
+
+
+def played_lines(config: Config, lines: Mapping[ChannelName, Sequence[InstructionUnion]], frames: int) -> np.ndarray:
+    """The channels playing their lines of instructions together, one instruction a frame, ``frames`` long."""
+    return sum(
+        (render_instructions(list(line), channel_name, config) for channel_name, line in lines.items()),
+        start=np.zeros(frames * config.library.frame_length, dtype=np.float32),
+    )
+
+
+def decoded_lines(
+    lines: Mapping[ChannelName, Sequence[InstructionUnion]],
+    channels: Mapping[ChannelName, GeneratorUnion],
+    silence: Contribution,
+    frames: int,
+) -> Streams:
+    """Streams decoded to play ``lines``, every other channel of ``channels`` silent through ``frames`` frames."""
+    streams: Streams = {}
+    for channel_name, generator in channels.items():
+        line = lines.get(channel_name, [generator.get_instruction_type().null_instruction()] * frames)
+        streams[channel_name] = [
+            ScoredCandidate(instruction=instruction, cost=0.0, contribution=silence) for instruction in line
+        ]
+
+    return streams
+
+
+def heard_alone(
+    layout: StemLayout,
+    catalogs: Mapping[GeneratorClassName, KindCatalog],
+    provider: CandidateProvider,
+    bins: int,
+) -> SteadyHearing:
+    """A frame of ``layout``'s stem heard alone, each row's feature values read at its channel's drive."""
+    return SteadyHearing(
+        layout=layout, catalogs=catalogs, driven=DrivenFeatures.of([layout], catalogs, provider), bins=bins
+    )
+
+
+def library_matcher(
+    config: Config, channel_name: ChannelName, instructions: Sequence[InstructionUnion]
+) -> FrameMatcher:
+    """The matcher of a library holding ``instructions`` alone, played on ``channel_name`` and read under ``config``."""
+    window = Window.from_config(config)
+    extractor = get_feature_extractor(config, window)
+    channels = get_generators_by_channels(config, [channel_name])
+    generator = channels[channel_name]
+    data: Dict[InstructionUnion, InstructionLibraryFragment[Any]] = {
+        instruction: InstructionLibraryFragment.create(generator, instruction, extractor)
+        for instruction in instructions
+    }
+    return ReconstructorWorker(
+        config=config,
+        window=window,
+        channels=channels,
+        library_data=InstructionLibraryData.create(config, data),
+        signal_length=JOINT_SIGNAL_LENGTH,
+    ).matcher

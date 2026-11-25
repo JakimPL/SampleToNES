@@ -39,38 +39,110 @@ class BoardCell(BaseModel):
     channels: Tuple[BoardChannel, ...]
 
 
+class BoardRecording(BaseModel):
+    """The recording the cells matched at one level reconstruct.
+
+    Attributes:
+        level: The level the recording was prepared at, which names it where a row holds several.
+        clip: The page's reference to the recording.
+    """
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    level: str
+    clip: str
+
+
 class BoardRow(BaseModel):
     """One reference sound across every column of a group.
 
     Attributes:
         item: The corpus item's name.
+        family: The family the item belongs to, which the page heads its section with.
         category: The corpus category the item belongs to.
-        recording: The page's reference to the recording every cell reconstructs.
+        recordings: One recording per level the cells were matched at, in the order the columns first
+            reach each level, so every cell plays beside the recording at its own level.
         cells: One cell per column, in the columns' order.
     """
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     item: str
+    family: str
     category: str
-    recording: str
+    recordings: Tuple[BoardRecording, ...]
     cells: Tuple[BoardCell, ...]
 
 
-class BoardGroup(BaseModel):
-    """One table of the page: the columns it holds side by side, and the sounds they reconstruct.
+class BoardColumn(BaseModel):
+    """One column of a group: the name it stands for, and the words its heading shows.
 
     Attributes:
-        name: What the group is called on its tab; empty where the page holds one group.
-        columns: The column headings, in the order the cells follow.
+        name: The column's whole name, the label of a variant or of a run.
+        words: The words of the name past the prefix every column of the group shares, one per line
+            of the heading. A column named by the prefix alone holds none, as the base configuration
+            the other columns add to.
+    """
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    name: str
+    words: Tuple[str, ...]
+
+
+class BoardFamily(BaseModel):
+    """One family of a group, which the page draws as a card of its own.
+
+    Attributes:
+        name: The family's name, which heads its card.
+        channels: Every channel a render of the family sounds, in the order the hardware holds them.
+            Each cell of the family keeps a lane for every one of them, so a channel stands at one
+            height across a row whichever channels each render holds.
+    """
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    name: str
+    channels: Tuple[str, ...]
+
+
+class BoardGroup(BaseModel):
+    """One tab of the page: the columns it holds side by side, and the sounds they reconstruct.
+
+    Attributes:
+        name: What the group is called on its tab.
+        prefix: The words every column's name starts with, joined as the names join them, which the
+            page states once for the group; empty where the names share none.
+        columns: The columns, in the order the cells follow.
+        families: One per card, in the order the rows first name them.
         rows: One row per reference sound.
     """
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     name: str
-    columns: Tuple[str, ...]
+    prefix: str
+    columns: Tuple[BoardColumn, ...]
+    families: Tuple[BoardFamily, ...]
     rows: Tuple[BoardRow, ...]
+
+
+class BoardGlyphs(BaseModel):
+    """The application's glyphs the page draws with.
+
+    Attributes:
+        header: The purpose glyph leading each family's card header.
+        expanded: The chevron of an open card.
+        collapsed: The chevron of a closed card.
+        play: The glyph on the button that plays a render.
+    """
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    header: str
+    expanded: str
+    collapsed: str
+    play: str
 
 
 class BoardPage(BaseModel):
@@ -79,7 +151,7 @@ class BoardPage(BaseModel):
     Attributes:
         title: The heading the page carries.
         referee: The name of the referee whose scores the cells report.
-        glyph: The purpose glyph each table's card header carries.
+        glyphs: The application's glyphs the page draws with.
         colors: The role each channel's color stands under, by channel name.
         groups: The tables the page holds, one per tab.
     """
@@ -88,6 +160,6 @@ class BoardPage(BaseModel):
 
     title: str
     referee: str
-    glyph: str
+    glyphs: BoardGlyphs
     colors: Dict[str, str]
     groups: Tuple[BoardGroup, ...]

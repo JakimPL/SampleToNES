@@ -159,7 +159,7 @@ def converted(
     assert reconstruction is not None
 
     frame_length = config.library.frame_length
-    working_level = reconstructor.load_audio(path) / reconstruction.coefficient
+    working_level = reconstructor.load_audio([path]) / reconstruction.coefficient
     return Converted(
         hiss_frames=working_level[frame_length * HISS.start : frame_length * HISS.stop].reshape(HISS_FRAMES, -1),
         instructions=reconstruction.instructions[ChannelName.NOISE],

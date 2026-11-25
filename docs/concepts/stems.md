@@ -118,12 +118,20 @@ level, a candidate is therefore ranked by how far it lowers its stem's frame cos
 behind it. The channel reaches the stem whose sound it covers most. Precedence between levels stays the
 hierarchy's, because that is what a reader arranges the levels to say.
 
-### 10. Ties resolve deterministically
+### 10. Channels driven alike stand in for each other
 
-Equal candidates go to the stem earlier in level order. Channels of one kind at one drive are scored as
-one column and resolve to the lowest free channel of that group. Successive picks over one kind therefore
-land on the lowest free channel, and a rerun assigns the same way every time. Two channels of a kind that
-a stem drives differently are scored separately, because each renders the recording at its own level.
+A stem's channels fall into groups, each of one kind at one drive:
+
+- within a group, the channels render a candidate alike, so they are interchangeable and fill lowest
+  first;
+- across groups, a candidate renders the recording at each group's own level, so every placement over
+  the groups sounds distinct and is weighed on its own.
+
+A pick scores each group as one column, which resolves to the group's lowest free channel, so successive
+picks over one kind land on the lowest free channel. The
+[joint assignment](reconstruction.md#52-assigning-channels-jointly) searches every placement of a frame's
+proposals over the groups. Equal candidates go to the stem earlier in level order, so a rerun assigns the
+same way every time.
 
 ### 11. The single-sample case stays exact
 

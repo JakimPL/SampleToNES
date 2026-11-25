@@ -45,6 +45,11 @@ SHARED_OWNERS: Final[Tuple[int, ...]] = (STEM_A_ID, STEM_B_ID)
 TAKING_TURNS_PITCH: Final[int] = 60
 TAKING_TURNS_VOLUME: Final[int] = 8
 TAKING_TURNS_DUTY_CYCLE: Final[int] = 0
+TURN_TONE_FREQUENCY: Final[float] = 440.0
+TURN_TONE_LEVEL: Final[float] = 0.5
+LOW_TONE_FREQUENCY: Final[float] = 220.0
+LOW_TONE_LEVEL: Final[float] = 0.4
+LOW_TONE_SHARE: Final[float] = 2.0 / 3.0
 
 
 def single_entry_stems_data(
@@ -106,7 +111,40 @@ def write_three_stem_recordings(
         "b": 0.4 * np.sin(2 * np.pi * 220.0 * time),
         "c": np.random.default_rng(RECORDING_SEED).uniform(-0.3, 0.3, count),
     }
+    return _written_recordings(sample_rate, recordings, tmp_dir)
 
+
+def write_turn_taking_stem_recordings(
+    config: Config,
+    tmp_dir: Pathlike,
+) -> Tuple[Path, Path, Path]:
+    """Writes stem recordings a, b, c where a and c take turns on one tone, and returns their paths in order.
+
+    Recording c sounds the tone over the first half and a over the second, so the channel both read it
+    on passes from c to a. Recording b sounds a lower tone over its first two thirds, so the channel it
+    takes rests after it.
+    """
+    sample_rate = config.library.sample_rate
+    count = int(sample_rate * STEM_RECORDING_DURATION_SECONDS)
+    samples = np.arange(count)
+    time = samples / sample_rate
+    tone = TURN_TONE_LEVEL * np.sin(2 * np.pi * TURN_TONE_FREQUENCY * time)
+    low_tone = LOW_TONE_LEVEL * np.sin(2 * np.pi * LOW_TONE_FREQUENCY * time)
+    first_half = samples < count // 2
+    recordings = {
+        "a": np.where(first_half, 0.0, tone),
+        "b": np.where(samples < int(LOW_TONE_SHARE * count), low_tone, 0.0),
+        "c": np.where(first_half, tone, 0.0),
+    }
+    return _written_recordings(sample_rate, recordings, tmp_dir)
+
+
+def _written_recordings(
+    sample_rate: int,
+    recordings: Dict[str, np.ndarray],
+    tmp_dir: Pathlike,
+) -> Tuple[Path, Path, Path]:
+    """Writes each recording to a wave file named after it and returns the three paths in order."""
     paths: List[Path] = []
     for name, audio in recordings.items():
         path = Path(tmp_dir) / f"stem_{name}.wav"

@@ -66,6 +66,60 @@ def calculate_fft_frequencies(fragment_length: int, sample_rate: int) -> np.ndar
     return frequencies
 
 
+def calculate_fft_bin_edges(fft_size: int, sample_rate: int) -> np.ndarray:
+    """
+    Edges of the bins ``calculate_fft`` returns, each bin centered on its frequency.
+
+    Bin ``j``, counted from one as ``calculate_fft`` drops the DC coefficient, holds the
+    frequency ``j * Δf`` with ``Δf = sample_rate / fft_size``, so it spans the interval
+    ``[(j - 1/2) * Δf, (j + 1/2) * Δf)``. The last edge stands at the Nyquist frequency,
+    where the one-sided spectrum ends, since a component above it folds back below it. An odd
+    size's last bin reaches it half a bin above its frequency, like every other bin. An even
+    size's last bin is the Nyquist coefficient itself, which holds the half bin below it.
+
+    Args:
+        fft_size: Size of the FFT.
+        sample_rate: Sampling rate in Hz.
+
+    Returns:
+        Bin edges in Hz, shape (fft_size//2 + 1,).
+
+    Examples:
+        >>> edges = calculate_fft_bin_edges(1024, 44100)
+        >>> edges.shape
+        (513,)
+        >>> float(edges[-1])
+        22050.0
+    """
+    resolution = sample_rate / fft_size
+    lower_edges = (np.arange(1, fft_size // 2 + 1) - 0.5) * resolution
+    edges: np.ndarray = np.append(lower_edges, sample_rate / 2.0)
+    return edges
+
+
+def calculate_bin_centers(edges: np.ndarray) -> np.ndarray:
+    """
+    The center of each bin of a frequency axis, halfway between its edges.
+
+    An FFT bin spans half a bin on either side of the frequency it holds
+    (``calculate_fft_bin_edges``), so its center is that frequency. A constant-Q bin's edges
+    stand at the geometric means of neighboring bin frequencies, which places its center
+    under a cent above its frequency.
+
+    Args:
+        edges: Strictly increasing bin edges, shape (n_bins + 1,).
+
+    Returns:
+        Bin centers, shape (n_bins,).
+
+    Examples:
+        >>> calculate_bin_centers(np.array([0.0, 2.0, 6.0]))
+        array([1., 4.])
+    """
+    centers: np.ndarray = (edges[:-1] + edges[1:]) / 2
+    return centers
+
+
 def erb_bandwidth(frequencies: np.ndarray) -> np.ndarray:
     """
     Equivalent rectangular bandwidth of the auditory filter centered at each frequency.
@@ -102,7 +156,9 @@ def erb_rate(frequencies: np.ndarray) -> np.ndarray:
     Returns:
         The ERB rate of each frequency, shape matching the input.
     """
-    rates: np.ndarray = ERB_RATE_SCALE * np.log10(1.0 + ERB_FREQUENCY_FACTOR * frequencies)
+    rates: np.ndarray = ERB_RATE_SCALE * np.log10(
+        1.0 + ERB_FREQUENCY_FACTOR * np.asarray(frequencies, dtype=np.float64)
+    )
     return rates
 
 
@@ -153,12 +209,17 @@ def calculate_weights_from_edges(edges: np.ndarray, perceptual_exponent: float =
     Calculate perceptual frequency weights for arbitrary histogram bin edges.
 
     Works for any frequency axis (linear FFT or logarithmic CQT). Each bin is
-    weighted by its span in auditory critical bands, `width / erb_bandwidth(f)`
-    (the number of ERBs the bin covers), times the K-weighting power response
-    raised to `perceptual_exponent`. The ERB measure follows a logarithmic axis
-    above roughly 500 Hz and a linear one below, matching the ear's resolution;
-    the K curve weights each band by its contribution to loudness at typical
-    music listening levels.
+    weighted by the number of auditory critical bands (ERBs) it spans, times the
+    K-weighting power response at its center raised to `perceptual_exponent`. The
+    ERB measure follows a logarithmic axis above roughly 500 Hz and a linear one
+    below, matching the ear's resolution; the K curve weights each band by its
+    contribution to loudness at typical music listening levels.
+
+    The ERB count is the distance between the bin's edges on the ERB-rate scale
+    (`erb_rate`), exact for a bin of any width, the log-spaced FFT's widened bass
+    bins included. The K curve is read at the bin's center (`calculate_bin_centers`),
+    which is the frequency an FFT bin holds and stands within a cent of a constant-Q
+    bin's frequency, so each bin takes the loudness gain at the frequency it holds.
 
     The result is normalized to sum to 1.0.
 
@@ -170,17 +231,15 @@ def calculate_weights_from_edges(edges: np.ndarray, perceptual_exponent: float =
         Normalized weights, shape (n_bins,). Sum of weights equals 1.0.
 
     Examples:
-        >>> edges = calculate_fft_frequencies(1024, 44100)
+        >>> edges = calculate_fft_bin_edges(1024, 44100)
         >>> weights = calculate_weights_from_edges(edges)
         >>> weights.shape
         (512,)
         >>> bool(np.isclose(weights.sum(), 1.0))
         True
     """
-    frequencies = edges[1:]
-    widths = np.diff(edges)
-    density_weights = widths / erb_bandwidth(frequencies)
-    perceptual_weights = k_weighting(frequencies) ** perceptual_exponent
+    density_weights = np.diff(erb_rate(edges))
+    perceptual_weights = k_weighting(calculate_bin_centers(edges)) ** perceptual_exponent
 
     weights: np.ndarray = density_weights * perceptual_weights
     normalized_weights: np.ndarray = weights / np.sum(weights)

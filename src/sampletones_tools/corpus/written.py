@@ -1,9 +1,12 @@
 from pathlib import Path
-from typing import Final, Mapping, Sequence, Tuple
+from typing import Dict, Final, List, Mapping, Sequence, Tuple, Union
+
+from pydantic import BaseModel, ConfigDict, Field
 
 from sampletones_core.configs import Config
 from sampletones_core.constants.algorithm import RESTING_STEM_ID
 from sampletones_core.constants.enums import ChannelName
+from sampletones_core.exporters.maps import CHANNEL_TO_EXPORTER_MAP
 from sampletones_core.instructions import InstructionUnion
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.reconstructions.reconstruction.stems.channel_assignment import ChannelAssignment
@@ -11,6 +14,58 @@ from sampletones_core.reconstructions.reconstruction.stems.data import StemsData
 from sampletones_core.reconstructions.reconstructor.stems.configs.settings import StemSettings
 
 SINGLE_STEM_ID: Final[int] = 0
+WRITTEN_COEFFICIENT: Final[float] = 1.0
+WRITTEN_SCALE: Final[float] = 1.0
+NO_RECORDINGS: Final[Tuple[Path, ...]] = ()
+
+FrameValue = Union[bool, int]
+
+
+class FrameRun(BaseModel):
+    """Frames one channel plays alike, one after another.
+
+    Attributes:
+        count: How many frames the run lasts.
+        frame: The instruction each of those frames plays, in the fields the channel's instruction takes.
+    """
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    count: int = Field(..., ge=1)
+    frame: Dict[str, FrameValue]
+
+
+def channel_frames(
+    channel: ChannelName,
+    runs: Sequence[FrameRun],
+) -> List[InstructionUnion]:
+    """The frames one channel plays, each run read as the instruction that channel takes.
+
+    Args:
+        channel: The channel the frames play on.
+        runs: The runs of alike frames, in order.
+
+    Returns:
+        List[InstructionUnion]: One instruction per frame.
+
+    Raises:
+        ValidationError: If a run's frame is no instruction the channel takes.
+    """
+    frames: List[InstructionUnion] = []
+    for run in runs:
+        frame = channel_frame(channel, run.frame)
+        frames.extend(frame for _ in range(run.count))
+
+    return frames
+
+
+def channel_frame(channel: ChannelName, fields: Mapping[str, FrameValue]) -> InstructionUnion:
+    """The instruction ``channel`` plays for a frame written out as the fields of that instruction.
+
+    Raises:
+        ValidationError: If the fields are no instruction the channel takes.
+    """
+    return CHANNEL_TO_EXPORTER_MAP[channel].get_instruction_type().model_validate(fields)
 
 
 def single_recording_record(
@@ -73,4 +128,18 @@ def written_reconstruction(
             instructions,
             scale,
         ),
+    )
+
+
+def written_runs(runs_by_channel: Mapping[ChannelName, Sequence[FrameRun]]) -> Reconstruction:
+    """A reconstruction playing the runs each channel writes out, at unit level with no recording behind it.
+
+    Raises:
+        ValidationError: If a run's frame is no instruction its channel takes.
+    """
+    return written_reconstruction(
+        {channel: channel_frames(channel, runs) for channel, runs in runs_by_channel.items()},
+        coefficient=WRITTEN_COEFFICIENT,
+        scale=WRITTEN_SCALE,
+        audio_filepath=NO_RECORDINGS,
     )

@@ -9,6 +9,8 @@ from sampletones_core.fft import erb_bandwidth, k_weighting
 from sampletones_core.fft.fft import calculate_weights_from_edges, erb_rate
 
 OCTAVE_EDGES: Final[np.ndarray] = np.geomspace(55.0, 14080.0, 8 * 12 + 1)
+WIDE_EDGES: Final[np.ndarray] = np.array([20.0, 100.0, 500.0, 2500.0, 12500.0])
+WIDE_CENTERS: Final[np.ndarray] = np.array([60.0, 300.0, 1500.0, 7500.0])
 
 
 class TestErbBandwidth:
@@ -69,6 +71,28 @@ class TestEdgeWeightDensity:
         edges = np.arange(40.0, 121.0, 10.0)
         weights = calculate_weights_from_edges(edges, perceptual_exponent=0.0)
         assert float(np.max(weights) / np.min(weights)) < 1.35
+
+    def test_a_bin_weighs_the_auditory_filters_it_spans(self) -> None:
+        """
+        A bin's density is its edges' distance on the ERB-rate scale, so bins wide enough for the
+        auditory bandwidth to change across them still weigh the filters they span.
+        """
+        weights = calculate_weights_from_edges(WIDE_EDGES, perceptual_exponent=0.0)
+        spans = np.diff(erb_rate(WIDE_EDGES))
+        assert weights == pytest.approx(spans / np.sum(spans))
+
+
+class TestEdgeWeightLoudness:
+    def test_the_loudness_curve_is_read_at_each_bin_s_center(self) -> None:
+        """
+        Dividing out the density leaves the K-weighting gain each bin takes at its center. The wide
+        bins span the bass roll-off and the treble shelf, so the gain at either edge differs from it.
+        """
+        weights = calculate_weights_from_edges(WIDE_EDGES, perceptual_exponent=1.0)
+        density = calculate_weights_from_edges(WIDE_EDGES, perceptual_exponent=0.0)
+        gains = weights / density
+        expected = k_weighting(WIDE_CENTERS)
+        assert gains / np.sum(gains) == pytest.approx(expected / np.sum(expected))
 
 
 class TestErbRate:

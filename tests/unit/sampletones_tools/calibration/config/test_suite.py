@@ -13,6 +13,8 @@ VALID_FIELDS: Final[Dict[str, Any]] = {
     "perceptual_exponents": (1.0,),
     "temporal_weights": (),
     "channels": ("pulse1", "triangle"),
+    "settings": (),
+    "levels": ("default",),
 }
 
 
@@ -30,6 +32,8 @@ class TestSuiteConfig(BaseTestSuite):
         TestCase(field="temporal_weights", value=(1.5,), label="temporal_weight_above_one"),
         TestCase(field="channels", value=(), label="no_channels"),
         TestCase(field="channels", value=("dpcm",), label="unknown_channel"),
+        TestCase(field="levels", value=(), label="no_levels"),
+        TestCase(field="levels", value=("loud",), label="unknown_level"),
     )
 
     def test_packaged_suite_loads(self) -> None:

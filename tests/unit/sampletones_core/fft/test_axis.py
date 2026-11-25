@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
+from typing import Final
+
 import numpy as np
 import pytest
 
@@ -10,11 +13,24 @@ from sampletones_core.constants.spectrum import BINS_PER_OCTAVE, CQT_CUTOFF_FREQ
 from sampletones_core.fft import (
     FFTTransformer,
     Window,
+    calculate_cqt_frequencies,
+    calculate_fft_bin_edges,
     calculate_fft_frequencies,
     calculate_weights_from_edges,
+    convert_midpoints_to_edges,
 )
 from sampletones_core.fft.features import get_feature_extractor
+from sampletones_core.fft.fft import calculate_bin_centers
+from sampletones_core.fft.spectrum.fft import calculate_fft_spectrum, calculate_log_spaced_fft_spectrum
 from sampletones_core.fft.spectrum.spectrum import calculate_spectrum
+from tests.suite.base import BaseTestSuite
+from tests.suite.case import BaseRegularTestCase
+
+FFT_SAMPLE_RATE: Final[int] = 44100
+TONE_BIN: Final[int] = 37
+TONE_SHARE_TOLERANCE: Final[float] = 1e-6
+CENTS_PER_OCTAVE: Final[float] = 1200.0
+CQT_OCTAVES: Final[int] = 9
 
 
 def _config(method: SpectrumMethod) -> Config:
@@ -42,8 +58,8 @@ class TestWindowSizeRule:
 
 class TestEachMethodsFloor:
     """The constant-Q transform reaches the lowest note the chip sounds, the triangle's an octave below
-    the pulse's. The log-spaced FFT starts where its window spans two cycles, whatever the constant-Q
-    floor is."""
+    the pulse's. The log-spaced FFT starts with the FFT bin holding the lowest frequency its window spans
+    two cycles of, whatever the constant-Q floor is."""
 
     def test_the_constant_q_axis_reaches_the_triangles_lowest_note(self) -> None:
         config = _config(SpectrumMethod.CQT)
@@ -53,13 +69,15 @@ class TestEachMethodsFloor:
 
         assert float(spectrum.edges[0]) <= MIN_TRIANGLE_FREQUENCY
 
-    def test_the_log_spaced_fft_axis_starts_at_its_own_floor(self) -> None:
+    def test_the_log_spaced_fft_axis_starts_with_the_fft_bin_holding_its_own_floor(self) -> None:
         config = _config(SpectrumMethod.LOG_SPACED_FFT)
         window = Window.from_config(config)
+        fft_edges = calculate_fft_bin_edges(window.size, config.library.sample_rate).astype(np.float32)
 
         spectrum = calculate_spectrum(SpectrumMethod.LOG_SPACED_FFT, _signal(window), config.library.sample_rate)
 
-        assert float(spectrum.edges[0]) == pytest.approx(LOG_FFT_CUTOFF_FREQUENCY)
+        assert bool(np.isin(spectrum.edges[:2], fft_edges).all())
+        assert float(spectrum.edges[0]) <= LOG_FFT_CUTOFF_FREQUENCY < float(spectrum.edges[1])
 
 
 class TestFragmentAxis:
@@ -87,10 +105,107 @@ class TestFragmentAxis:
         assert len(fragment.feature.values) > 1
 
 
+class TestEachFFTBinCentersOnItsFrequency(BaseTestSuite):
+    """Bin ``j`` of the FFT spectrum holds the frequency ``j * Δf`` and spans half a bin on either side of it.
+
+    The axis ends at the Nyquist frequency at every size. An even size's last bin is the Nyquist
+    coefficient, which holds the half bin below it.
+    """
+
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        size: int
+
+    test_cases = (
+        TestCase(label="even size", size=1024),
+        TestCase(label="odd size", size=1023),
+    )
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
+    def test_a_tone_at_a_bin_s_frequency_peaks_in_the_bin_centered_on_it(self, test_case: TestCase) -> None:
+        frequency = TONE_BIN * FFT_SAMPLE_RATE / test_case.size
+        tone = np.cos(2.0 * np.pi * frequency * np.arange(test_case.size) / FFT_SAMPLE_RATE)
+
+        spectrum = calculate_fft_spectrum(tone, FFT_SAMPLE_RATE)
+
+        peak = int(np.argmax(spectrum.values))
+        lower, upper = float(spectrum.edges[peak]), float(spectrum.edges[peak + 1])
+        assert lower <= frequency < upper
+        assert (lower + upper) / 2.0 == pytest.approx(frequency)
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
+    def test_the_axis_ends_at_the_nyquist_frequency(self, test_case: TestCase) -> None:
+        spectrum = calculate_fft_spectrum(np.zeros(test_case.size), FFT_SAMPLE_RATE)
+
+        assert float(spectrum.edges[-1]) == pytest.approx(FFT_SAMPLE_RATE / 2.0)
+        assert len(spectrum.values) == test_case.size // 2
+
+
+class TestALowToneKeepsToOneLogBin(BaseTestSuite):
+    """Below where the log axis turns logarithmic, its bins are the FFT bins themselves.
+
+    A tone at an FFT bin's frequency, exactly periodic in the window, keeps all of its power in the one
+    log bin centered on it, from the bin holding the axis's floor up to the turn.
+    """
+
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        size: int
+        tone_bin: int
+
+    test_cases = (
+        TestCase(label="size 1615, the floor's bin", size=1615, tone_bin=2),
+        TestCase(label="size 1615", size=1615, tone_bin=9),
+        TestCase(label="size 1616", size=1616, tone_bin=5),
+        TestCase(label="size 2048, the floor's bin", size=2048, tone_bin=3),
+        TestCase(label="size 2048, below the turn", size=2048, tone_bin=16),
+    )
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
+    def test_its_power_stays_in_the_log_bin_centered_on_it(self, test_case: TestCase) -> None:
+        frequency = test_case.tone_bin * FFT_SAMPLE_RATE / test_case.size
+        tone = np.cos(2.0 * np.pi * frequency * np.arange(test_case.size) / FFT_SAMPLE_RATE)
+
+        spectrum = calculate_log_spaced_fft_spectrum(tone, FFT_SAMPLE_RATE)
+
+        values = np.asarray(spectrum.values, dtype=np.float64)
+        peak = int(np.argmax(values))
+        lower, upper = float(spectrum.edges[peak]), float(spectrum.edges[peak + 1])
+        assert values[peak] / values.sum() == pytest.approx(1.0, abs=TONE_SHARE_TOLERANCE)
+        assert (lower + upper) / 2.0 == pytest.approx(frequency)
+
+
+class TestBinCenters:
+    """A bin's center stands halfway between its edges: on the frequency an FFT bin holds, and under a
+    cent above a constant-Q bin's frequency."""
+
+    def test_an_odd_size_s_fft_bins_center_on_their_frequencies(self) -> None:
+        size = 1023
+        centers = calculate_bin_centers(calculate_fft_bin_edges(size, FFT_SAMPLE_RATE))
+
+        assert centers == pytest.approx(calculate_fft_frequencies(size, FFT_SAMPLE_RATE)[1:])
+
+    def test_an_even_size_s_nyquist_bin_centers_a_quarter_bin_below_its_frequency(self) -> None:
+        size = 1024
+        resolution = FFT_SAMPLE_RATE / size
+        centers = calculate_bin_centers(calculate_fft_bin_edges(size, FFT_SAMPLE_RATE))
+        frequencies = calculate_fft_frequencies(size, FFT_SAMPLE_RATE)[1:]
+
+        assert centers[:-1] == pytest.approx(frequencies[:-1])
+        assert float(centers[-1]) == pytest.approx(float(frequencies[-1]) - resolution / 4)
+
+    def test_a_constant_q_bin_centers_under_a_cent_above_its_frequency(self) -> None:
+        frequencies = calculate_cqt_frequencies(CQT_OCTAVES * BINS_PER_OCTAVE, CQT_CUTOFF_FREQUENCY, BINS_PER_OCTAVE)
+        centers = calculate_bin_centers(convert_midpoints_to_edges(frequencies))
+
+        cents = CENTS_PER_OCTAVE * np.log2(centers / frequencies)
+        assert bool(np.all((cents > 0.0) & (cents < 1.0)))
+
+
 class TestEdgeWeights:
     def test_linear_fft_edges_give_positive_normalized_weights(self) -> None:
         sample_rate, length = 44100, 1024
-        edges = calculate_fft_frequencies(length, sample_rate)
+        edges = calculate_fft_bin_edges(length, sample_rate)
         weights = calculate_weights_from_edges(edges, perceptual_exponent=1.0)
         assert weights.shape[0] == length // 2
         assert bool(np.all(weights > 0.0))

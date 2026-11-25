@@ -13,12 +13,15 @@ from sampletones_core.instructions import (
     TriangleInstruction,
 )
 from sampletones_core.reconstructions.reconstructor.contribution import Contribution
+from sampletones_core.reconstructions.reconstructor.decoder.base import PooledCombination
 from sampletones_core.reconstructions.reconstructor.matching import ScoredCandidate
 from sampletones_core.reconstructions.reconstructor.stems.assignment.track import TrackAssignment
 from sampletones_core.reconstructions.reconstructor.stems.models.choice import StemChoice
 from sampletones_core.reconstructions.reconstructor.stems.models.frame_assignment import StemFrameAssignment
+from sampletones_core.reconstructions.reconstructor.stems.models.pool import StemPool
 from sampletones_core.reconstructions.reconstructor.stems.models.rest import StemRest
 from sampletones_core.structures.histogram import Histogram
+from tests.suite.base import BaseTestSuite
 
 FRAME_COST: Final[float] = 0.5
 
@@ -78,11 +81,11 @@ def _rest(config: Config) -> StemRest:
     )
 
 
-class TestStemFrameAssignment:
+class TestStemFrameAssignment(BaseTestSuite):
     def test_by_channel_names_the_stem_holding_each_channel(self) -> None:
         first, second = _choices(Config())
 
-        assignment = StemFrameAssignment(choices=(first, second), rests=())
+        assignment = StemFrameAssignment(choices=(first, second), rests=(), pools=())
 
         assert assignment.by_channel == {
             ChannelName.PULSE1: first,
@@ -93,20 +96,20 @@ class TestStemFrameAssignment:
         config = Config()
         first, _ = _choices(config)
 
-        assignment = StemFrameAssignment(choices=(first,), rests=(_rest(config),))
+        assignment = StemFrameAssignment(choices=(first,), rests=(_rest(config),), pools=())
 
         assert assignment.resting == (ChannelName.NOISE,)
         assert set(assignment.by_channel).isdisjoint(assignment.resting)
 
 
-class TestTrackAssignment:
+class TestTrackAssignment(BaseTestSuite):
     def test_a_frame_reaches_every_channel_it_answers(self) -> None:
         config = Config()
         first, second = _choices(config)
         rest = _rest(config)
 
         track = TrackAssignment([ChannelName.PULSE1, ChannelName.TRIANGLE, ChannelName.NOISE])
-        track.add(StemFrameAssignment(choices=(first, second), rests=(rest,)))
+        track.add(StemFrameAssignment(choices=(first, second), rests=(rest,), pools=()))
 
         assert track.stem_ids == {
             ChannelName.PULSE1: [first.stem_id],
@@ -123,8 +126,8 @@ class TestTrackAssignment:
         noise_choice = _choice(0, ChannelName.NOISE, NoiseInstruction.default_instruction(), _fragment(config))
 
         track = TrackAssignment([ChannelName.PULSE1, ChannelName.NOISE])
-        track.add(StemFrameAssignment(choices=(first,), rests=(rest,)))
-        track.add(StemFrameAssignment(choices=(first, noise_choice), rests=()))
+        track.add(StemFrameAssignment(choices=(first,), rests=(rest,), pools=()))
+        track.add(StemFrameAssignment(choices=(first, noise_choice), rests=(), pools=()))
 
         assert track.stem_ids[ChannelName.NOISE] == [RESTING_STEM_ID, 0]
 
@@ -135,7 +138,7 @@ class TestTrackAssignment:
 
         track = TrackAssignment([ChannelName.PULSE1])
         for choice in (first, silent_pick, first):
-            track.add(StemFrameAssignment(choices=(choice,), rests=()))
+            track.add(StemFrameAssignment(choices=(choice,), rests=(), pools=()))
         track.release_silent({ChannelName.PULSE1: [column[0] for column in track.lattices[ChannelName.PULSE1]]})
 
         assert track.stem_ids[ChannelName.PULSE1] == [first.stem_id, RESTING_STEM_ID, first.stem_id]
@@ -146,12 +149,69 @@ class TestTrackAssignment:
 
         track = TrackAssignment([ChannelName.PULSE1])
         for _ in range(3):
-            track.add(StemFrameAssignment(choices=(silent_pick,), rests=()))
+            track.add(StemFrameAssignment(choices=(silent_pick,), rests=(), pools=()))
         track.release_silent({ChannelName.PULSE1: [column[0] for column in track.lattices[ChannelName.PULSE1]]})
 
         assert track.stem_ids[ChannelName.PULSE1] == [RESTING_STEM_ID] * 3
 
 
-class TestHierarchyMode:
+def _pool(stem_id: int, column_heads: Tuple[ScoredCandidate, ...], channel_names: Tuple[ChannelName, ...]) -> StemPool:
+    return StemPool(
+        stem_id=stem_id,
+        channel_names=channel_names,
+        combinations=(PooledCombination(candidates=column_heads, cost=FRAME_COST),),
+    )
+
+
+class TestTrackPools(BaseTestSuite):
+    def test_every_stem_s_pools_gather_in_frame_order(self) -> None:
+        config = Config()
+        first, _ = _choices(config)
+        rest = _rest(config)
+        pools = [
+            _pool(first.stem_id, (first.head, rest.column[0]), (ChannelName.PULSE1, ChannelName.NOISE))
+            for _ in range(2)
+        ]
+
+        track = TrackAssignment([ChannelName.PULSE1, ChannelName.NOISE])
+        for pool in pools:
+            track.add(StemFrameAssignment(choices=(first,), rests=(rest,), pools=(pool,)))
+
+        stem_pools = track.alternatives.pools[first.stem_id]
+        assert stem_pools.channel_names == (ChannelName.PULSE1, ChannelName.NOISE)
+        assert stem_pools.frames == [pool.combinations for pool in pools]
+        assert track.alternatives.lattices == track.lattices
+
+    def test_a_channel_its_sounding_stem_pools_is_that_stem_s_until_decoded_silent(self) -> None:
+        """A pool may sound a channel the frame's picks left resting, so the channel is the pooling stem's."""
+        config = Config()
+        first, _ = _choices(config)
+        rest = _rest(config)
+        noise = ScoredCandidate(
+            instruction=NoiseInstruction.default_instruction(),
+            cost=FRAME_COST,
+            contribution=_silence(_fragment(config)),
+        )
+        pool = _pool(first.stem_id, (first.head, noise), (ChannelName.PULSE1, ChannelName.NOISE))
+
+        track = TrackAssignment([ChannelName.PULSE1, ChannelName.NOISE])
+        for _ in range(2):
+            track.add(StemFrameAssignment(choices=(first,), rests=(rest,), pools=(pool,)))
+        track.release_silent({ChannelName.PULSE1: [first.head] * 2, ChannelName.NOISE: [noise, rest.column[0]]})
+
+        assert track.stem_ids[ChannelName.NOISE] == [first.stem_id, RESTING_STEM_ID]
+
+    def test_a_silent_stem_s_pool_leaves_its_channels_resting(self) -> None:
+        config = Config()
+        rest = _rest(config)
+        pool = _pool(0, (rest.column[0],), (ChannelName.NOISE,))
+
+        track = TrackAssignment([ChannelName.NOISE])
+        track.add(StemFrameAssignment(choices=(), rests=(rest,), pools=(pool,)))
+
+        assert track.stem_ids[ChannelName.NOISE] == [RESTING_STEM_ID]
+
+
+class TestHierarchyMode(BaseTestSuite):
     def test_values(self) -> None:
         assert tuple(HierarchyMode) == (HierarchyMode.ROUND_ROBIN, HierarchyMode.STRICT)

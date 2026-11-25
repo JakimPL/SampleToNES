@@ -2,31 +2,55 @@ from typing import Dict, List, Sequence
 
 from sampletones_core.constants.algorithm import RESTING_STEM_ID
 from sampletones_core.constants.enums import ChannelName
-from sampletones_core.reconstructions.reconstructor.decoder.base import ChannelLattice, Lattices, Streams
+from sampletones_core.reconstructions.reconstructor.decoder.base import (
+    Alternatives,
+    ChannelLattice,
+    Lattices,
+    Pools,
+    StemPools,
+    Streams,
+)
 from sampletones_core.reconstructions.reconstructor.matching import Column
 from sampletones_core.reconstructions.reconstructor.stems.models.frame_assignment import StemFrameAssignment
+from sampletones_core.reconstructions.reconstructor.stems.models.pool import StemPool
 
 
 class TrackAssignment:
     """
     Gathers a recording's frame assignments into what the rest of the reconstruction reads.
 
-    Two records grow side by side, both in frame order: the lattice each channel offers the
-    decoder, and the stem that owns each of the channel's frames. Keeping them parallel is
-    what lets a stem selection name the frames it sounds in.
+    Three records grow side by side, all in frame order: the lattice each channel offers the
+    decoder, the pool of whole combinations each stem offers it, and the stem that owns each of the
+    channel's frames. Keeping them parallel is what lets a stem selection name the frames it sounds in.
     """
 
     def __init__(self, channel_names: Sequence[ChannelName]) -> None:
         self.lattices: Lattices = {channel_name: [] for channel_name in channel_names}
+        self.pools: Pools = {}
         self.stem_ids: Dict[ChannelName, List[int]] = {channel_name: [] for channel_name in channel_names}
 
+    @property
+    def alternatives(self) -> Alternatives:
+        """What the decoder chooses from: every channel's lattice and every stem's pools."""
+        return Alternatives(lattices=self.lattices, pools=self.pools)
+
     def add(self, frame_assignment: StemFrameAssignment) -> None:
-        """Appends one frame: every channel in play gains its column and the stem that took it."""
+        """Appends one frame: every channel in play gains its column and the stem that took it.
+
+        A stem's pool may sound a channel its frame's picks left resting, so every channel of a
+        sounding stem's pool is that stem's in the frame. A decoded silence releases it again.
+        """
         for choice in frame_assignment.choices:
             self._append(choice.channel_name, choice.stem_id, choice.column)
 
         for rest in frame_assignment.rests:
             self._append(rest.channel_name, RESTING_STEM_ID, rest.column)
+
+        holding = {choice.stem_id for choice in frame_assignment.choices}
+        for pool in frame_assignment.pools:
+            self._pool(pool)
+            if pool.stem_id in holding:
+                self._claim(pool)
 
     def release_silent(self, streams: Streams) -> None:
         """Gives every frame a decoded stream plays silent to the resting stem.
@@ -46,6 +70,20 @@ class TrackAssignment:
                     stem_ids[frame] = RESTING_STEM_ID
 
     def _append(self, channel_name: ChannelName, stem_id: int, column: Column) -> None:
+        """Appends the frame's column of one channel and the stem that took it."""
         lattice: ChannelLattice = self.lattices[channel_name]
         lattice.append(column)
         self.stem_ids[channel_name].append(stem_id)
+
+    def _claim(self, pool: StemPool) -> None:
+        """Gives the frame of every channel ``pool`` covers to the pool's stem."""
+        for channel_name in pool.channel_names:
+            self.stem_ids[channel_name][-1] = pool.stem_id
+
+    def _pool(self, pool: StemPool) -> None:
+        """Appends the frame's pool to its stem's pools, opening them at the stem's first pool."""
+        stem_pools = self.pools.setdefault(
+            pool.stem_id,
+            StemPools(channel_names=pool.channel_names, frames=[]),
+        )
+        stem_pools.frames.append(pool.combinations)

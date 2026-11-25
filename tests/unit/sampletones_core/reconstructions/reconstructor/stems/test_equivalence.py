@@ -25,7 +25,8 @@ from sampletones_core.reconstructions.reconstructor.stems.configs.settings impor
 from sampletones_core.reconstructions.reconstructor.stems.models.choice import StemChoice
 from sampletones_core.reconstructions.reconstructor.stems.models.frame_assignment import StemFrameAssignment
 
-from .conftest import audible_instruction_of, frame_objective_baseline, rendered_fragment, shared_frames
+from ..conftest import rendered_fragment
+from .conftest import audible_instruction_of, frame_objective_baseline, shared_frames
 
 RANDOM_SEEDS: Final[Tuple[int, ...]] = (11, 23, 47, 89, 131, 197)
 COST_TOLERANCE: Final[float] = 1e-5

@@ -98,10 +98,10 @@ sharper frequency resolution requires a longer time window, and vice versa):
 - **log-FFT** takes the same FFT and *re-bins* its linear bins onto a logarithmic
   (musical) axis whose bin widths are floored at the FFT's `Δf`: the axis is linear
   where a musical interval falls below the resolution (roughly under 500 Hz at the
-  defaults) and logarithmic above. Low tones therefore stay compact and every log
-  bin aggregates whole FFT bins — the resolution is still the FFT's `Δf`, presented
-  on a perceptual axis. Like the FFT it keeps a short window, so it localizes events
-  sharply in time.
+  defaults) and logarithmic above. Its linear bins are the FFT's own, so low tones
+  stay compact, and each logarithmic bin spans more than one FFT bin — the resolution
+  is still the FFT's `Δf`, presented on a perceptual axis. Like the FFT it keeps a
+  short window, so it localizes events sharply in time.
 - **CQT** (constant-Q transform) places bins geometrically and gives
   every musical interval the same number of bins, so it resolves low pitches finely.
   It is the default. Its lowest bin sits at the lowest note the chip sounds: the
@@ -115,7 +115,8 @@ sharper frequency resolution requires a longer time window, and vice versa):
   milliseconds), so brief events are smeared in time at the low end. _SampleToNES_
   computes the CQT **once over the whole signal** with a hop of one frame, so each
   frame's energy is reported at its own time position and the per-frame columns line up
-  with the FFT path's frame centers.
+  with the FFT path's frame centers. Each column centers on the middle of its frame, and
+  the first columns read the audio from its first sample, with silence before it.
 
 The target and the library candidates are always described by the *same* method, so
 their features are directly comparable bin by bin. All three methods share one scale
@@ -154,6 +155,33 @@ when no triangle is covered, and the noise channel does for a noise-only setup. 
 what a single tone channel renders whole, so one channel can answer it, and louder frames call on more
 channels.
 
+The triangle has one level, so a working level set by the frames' RMS can leave a triangle bass line
+louder or quieter than the triangle plays, and a pulse then takes the bass. With `general.level: fitted`
+the level is read from the bass line itself, for material written for the NES or close to it:
+
+1. Every frame that a recording which may sound the triangle sounds through, two frames on either
+   side, is fitted with every note at once, as the joint assignment's first step does, the triangle
+   free to sound at any level. A low note is read over a window several frames long, and a note a
+   rest cuts short reads quieter than it plays. The lowest run of neighboring triangle notes holding a
+   fair share of the fitted power is the frame's bass, and the square root of its level says how loud
+   the bass stands against the triangle.
+2. Where a bass stands on at least half of those frames and their readings agree, the reading most of
+   the others lie near is the level the bass plays at. A bass resting between notes or changing note
+   within a frame's window reads quieter than it plays, and a pulse sharing its note reads louder,
+   while the frames that hold the line read alike.
+3. The joint assignment chooses a sample of the frames at the first level and at the one read. The new
+   level holds where the triangle then plays the bass the frames were read on in most of them, and
+   where the frames as chosen cost less than at the first level. A triangle note fitting a pulse's
+   fundamental reads a level too, and there the choice gives that note back to the pulse, or the pulse
+   falls short of what it then has to play.
+
+Elsewhere, as for a recording, whose level is a choice, the coefficient stays as above.
+
+A run reads its working level through one rule, which the reconstructor builds once from `general.level`:
+the loudness level above, or the fitted level built on it. A rule handed to the reconstructor takes their
+place whole. The calibration's true level is one such rule. It divides every recording by one, so a sound
+written as NES frames is matched at the level its file holds.
+
 ## 4. Scoring a candidate: the criterion
 
 The **criterion** scores a candidate against the target frame as a weighted sum of a spectral and a
@@ -178,8 +206,8 @@ cost = α · spectral + β · temporal
   level, which keeps a silent frame's score finite.
 
   Bins are weighted by their span in auditory critical bands (the ERB scale) times the K-weighting
-  loudness curve (ITU-R BS.1770). Each bin then counts in proportion to the hearing resolution and
-  loudness contribution it represents.
+  loudness curve (ITU-R BS.1770) read at each bin's center. Each bin then counts in proportion to the
+  hearing resolution and loudness contribution it represents.
 - **temporal** measures the target *waveform* against what the frame's channels are expected to render. It
   is normalized by the target frame's own level, so the spectral/temporal blend holds across frame
   loudness. A candidate whose frames repeat one waveform shape (a note, or noise whose register cycle fits
@@ -188,6 +216,12 @@ cost = α · spectral + β · temporal
   candidate whose frames show different stretches of a pseudo-random sequence renders its mean level with
   a spread about it. For waveforms expected to sum to `E` with a per-sample variance `V`,
   `E mean((t − x)²) = mean((t − E)²) + V`, whose root normalizes as above.
+
+A frame's cost also charges each channel it sounds `generation.weights.channel_price`, which is zero by
+default and an opt-in setting while the calibration benchmark judges it. Both terms are relative to the
+frame's own sound, so the price is a share of that sound as well. A channel then sounds only where it
+lowers the criterion by more than the price, which keeps a quiet extra note from covering a little of
+the frame. The price reaches the assignment and the decoder alike through the costs of the columns.
 
 A lower cost is a better match. The criterion scores many candidates at once, and runs on the graphics
 card where the machine has one.
@@ -256,13 +290,64 @@ count of channels sounding at once are the general case, described in [Stems rec
 There each mix answers one source's own sound, so the channel a source wins carries that source's
 material.
 
-### 5.2 Greedy decoding
+### 5.2 Assigning channels jointly
+
+`generation.assignment.method: joint` decides a frame by comparing whole combinations of channels. It is
+an opt-in setting while the calibration benchmark judges it. A pick scores each candidate on its own
+against the whole frame, and the criterion pays far more for sound left uncovered than for sound added.
+So the first pick of a chord is often a loud low pulse or loud noise that touches every bin. The joint
+assignment reads the frame in four steps:
+
+1. **Fit every note at once.** The levels of every note the source's channels may sound, in every duty
+   cycle, are fitted to the frame together. The fit lowers the criterion's own divergence with
+   multiplicative updates, each level held under what its channels can play. A note the frame holds
+   takes its level. A note that would only cover other notes' partials is left with little, because the
+   true notes explain the same bins with nothing left over. The strongest notes of each kind become the
+   frame's proposals: eight pulse notes, four triangle notes and three noise shapes.
+2. **Fit every combination.** Every combination of the proposals the source may sound together is fitted
+   the same way: the pulse and noise levels free, the triangle at its one level. A combination places each
+   proposal on a channel of its kind. Channels the source drives alike stand in for each other, so a set
+   of proposals sounds on them once, and every placement over channels it drives apart is fitted
+   ([stems](stems.md#10-channels-driven-alike-stand-in-for-each-other)). The combinations fitting
+   best move onto the library's rows, one channel at a time over every volume and duty cycle of its note.
+3. **Let the full criterion choose.** The cheapest combinations are scored with the full criterion, each
+   channel phased against what the louder ones leave of the waveform. The spectral ranking favors a quiet
+   extra channel that fills a little of the frame's power, and the full criterion often charges more for
+   it than it gains. So the choice then silences its channels one at a time for as long as the full
+   criterion falls, each channel left also tried at the volumes that take up the silenced one's sound.
+   Each pulse then tries the duty cycle sharing its spectrum (25% and 75%), and the others the spectral
+   term hears alike, and keeps the one the full criterion prefers.
+4. **Hand the decoder its columns.** Each channel's column holds what the chosen combination plays on it,
+   the same note at its nearest volumes, the best rows of the other proposed notes and its silence, each
+   scored with the other channels playing the choice.
+
+Every step hears a row as one channel plays it in this frame. A row's spectrum belongs to the row played
+on a channel: the channel's [drive](../glossary.md#drive) scales what the row adds, and a frame among its
+neighbors hears the row through its analysis window ([section 5.6](#56-hearing-a-frame-among-its-neighbors)).
+The library holds each row's power, and the frame's hearing is the one reader that turns a row into what
+the frame hears. So the first fit hears each note on the channel its proposal would sound on, and lets it
+reach what every channel of its kind plays at full volume. A note's strength is the power its level sounds
+heard alone. The full criterion phases the channels by how loud each plays its row heard alone at its
+drive.
+
+Where the source drives its two pulses alike, they go to the channels that keep each nearest the note it
+played a frame before, so a held line stays on its channel. Every source is solved on its own channels,
+so the joint assignment needs each channel held by one source.
+
+The joint assignment also hands every source a **pool** of whole combinations per frame, which the
+[combinations decoder](#55-decoding-whole-combinations) reads. The pool holds the choice with every set of
+its sounding channels silenced, the cheapest combinations of step 3, each again with one channel
+silenced, and the choice of the frame before, scored in this frame. It also holds the choice with one channel moved to each alternative of its
+column, which the column has already scored. A frame the source leaves silent pools its one combination:
+every channel resting.
+
+### 5.3 Greedy decoding
 
 The greedy decoder plays each frame's best candidate, reading one candidate per column. Each frame is
 decided by its own cost alone, which is fast and simple. The instruction streams follow each frame's match
 wherever it leads. That is audible as jitter even where every individual frame is well matched.
 
-### 5.3 Viterbi decoding
+### 5.4 Viterbi decoding
 
 The Viterbi decoder weighs a frame's candidates against the frames around them. It reads `top_k`
 candidates per column, with the channel's silence among them, and forms a lattice of states over time. Per
@@ -280,6 +365,77 @@ A resting frame reaches the decoder as a column of one, so a channel that no sou
 as the off state it is. Coming back on costs what any other on/off change costs. A frame the decoder
 settles on a silent instruction is released to the resting stem, so the resting stem id and the silence
 name the same frames. A channel decoded silent throughout is [standing by](../glossary.md#standing-by).
+
+### 5.5 Decoding whole combinations
+
+`generation.decoder.selector: combinations` decodes one path per source through the pools of the
+[joint assignment](#52-assigning-channels-jointly), which it needs. It is an opt-in setting while the
+calibration benchmark judges it. The Viterbi decoder weighs one channel's candidates with the source's
+other channels playing the frame's choice. At a note change, the frame's analysis window still holds the
+note before, and the frame's cheapest combination may move a pulse to the octave of a note it shares.
+Keeping the line takes several channels changing together, which no single channel's path can choose.
+
+Here a state is a whole combination of the source's channels, with its two pulses in either order where
+the source drives them alike. The path cost combines:
+
+- the frame's cost with the combination sounding, counted once, and
+- the transition cost of the Viterbi decoder, charged to every channel for its own change.
+
+A move of one channel then trades the frame's cost against its change as the Viterbi decoder trades it.
+A move of several channels together is weighed by the cost the frame reaches with all of them moved.
+
+The silenced combinations let a path turn any of the choice's channels off together where the frames
+around ask for it, as the Viterbi decoder can, and the moves along a column let it take every step the
+Viterbi decoder can take on one channel. The previous frame's choice lets a path hold a combination
+through a change. The
+chosen combination's channels become the channels' streams, and the refinement reads them as it reads
+the Viterbi decoder's.
+
+### 5.6 Hearing a frame among its neighbors
+
+`generation.assignment.neighbors` assigns every frame again after a decode, among the notes its
+neighbors were decoded to play, and decodes the new columns and pools anew. A count of two repeats the
+pass. It needs the [joint assignment](#52-assigning-channels-jointly) and is an opt-in setting while the
+calibration benchmark judges it.
+
+A frame's analysis window reads the frames around it. Under `cqt` a bin reads a Hann wavelet of
+`Q · sample_rate / f` samples centered on the frame, so a 110 Hz bin spans about nine frames and holds a
+fifth of its weight in its own, and a bin above about 880 Hz reads its own frame alone. The first
+assignment hears every frame alone, each note as if held through the whole window. At a note change the
+window holds the note before and the note after, and the frame is asked to explain both.
+
+The pass reads a frame through a forward model of its window:
+
+- Each bin weighs every frame around it by the share of its window's weight that frame holds: the
+  wavelet's under `cqt`, laid where the transform lays it, and the tapered window's under `fft` and
+  `logfft`.
+- A note held over a run of frames keeps its phase, so the run reaches the bin in amplitude: each frame's
+  share times its amplitude, summed over the run, then squared.
+- Different notes and different channels add in power, and the noise adds in power by the shares of the
+  window's squared weight.
+
+The frames are assigned in turn. A frame hears the choices the frames before it took in the pass and the
+notes the frames after it were decoded to play, so each frame is decided among the latest choices around
+it. What the neighbors play is a fixed part of every mix the frame's assignment compares, its **leak**. A
+row the frame plays adds its own share of its power. A row sounding the note held up to the frame, or
+the note held from it, extends that note, and the two add in amplitude. A note held through the frame
+then reaches it as a note heard alone does, and a note that stopped two frames before is heard as its
+frames' tail. The joint assignment's second and third steps read the frame this way: the fit of every
+combination reads a fitted level at the level of the note it extends, and the full criterion scores each
+combination with the leak in its mix. Its first step, the fit of every note, stands over the leak and hears
+each note alone, as a note held through the whole window. That fit weighs every note of the frame at once,
+and the window model reads a note cut at a frame boundary only approximately.
+
+A low bin's window averages a channel over many frames, so a channel switched on and off from frame to
+frame reads there as a level between the two: a triangle quieter than its one volume, or a noise quieter
+than its quietest step. The model hears that as a close match, and the ear hears it as flicker. With a
+channel's `generation.assignment.inertia` above zero, a frame's choice in the pass also pays that many
+times the decoder's charges for the channel changing from what the frame before plays and to what the
+frame after plays. Each channel has its own value, so a bass on the triangle can hold steady while the
+noise stays free for short drum hits, and a stem's channels follow the values of the channels it holds.
+The combinations the two neighbors play join the frame's finalists, so it may hold through them, and
+the columns and pools the decoder reads carry the same charge. It is an opt-in setting while the
+calibration benchmark judges it.
 
 ## 6. Refining the pitch
 
