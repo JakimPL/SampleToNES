@@ -103,7 +103,8 @@ class HeldNote:
 
     def joined_by(self, keys: Sequence[Optional[NoteKey]]) -> np.ndarray:
         """Which rows sound this note and so join it, as a column of ones and zeros, one row per key."""
-        return np.array([[float(key is not None and key == self.key)] for key in keys])
+        joined = [float(key is not None and key == self.key) for key in keys]
+        return np.array(joined, dtype=np.float64).reshape(len(keys), 1)
 
 
 class ChannelSurroundings(Protocol):

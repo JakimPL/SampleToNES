@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from typing import Final, List, Optional
 
 import numpy as np
@@ -12,6 +13,8 @@ from sampletones_core.reconstructions.reconstructor.window.surroundings import (
     TonalSurroundings,
     surroundings,
 )
+from tests.suite.base import BaseTestSuite
+from tests.suite.case import BaseRegularTestCase
 
 HELD: Final[NoteKey] = (57, 0)
 NEXT: Final[NoteKey] = (60, 0)
@@ -107,6 +110,34 @@ class TestNoise:
 
         assert around.heard([HELD], POWER[None, :])[0] == pytest.approx(PROFILES.own_energy * POWER)
         assert around.leak == pytest.approx(np.zeros(2))
+
+
+class TestNoRows(BaseTestSuite):
+    """A frame's surroundings hear an empty set of rows as an empty stack, one row per row asked for.
+
+    The neighbor pass asks for no rows on a channel no choice of the frame sounds.
+    """
+
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        coherent: bool
+
+    test_cases = (
+        TestCase(label="tonal", coherent=True),
+        TestCase(label="noise", coherent=False),
+    )
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
+    def test_no_rows_gain_nothing(self, test_case: TestCase) -> None:
+        around = surroundings(_line(_run(HELD, FRAMES), coherent=test_case.coherent), MIDDLE, PROFILES)
+
+        assert around.gains([]).shape == (0, len(POWER))
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
+    def test_no_rows_are_heard_as_nothing(self, test_case: TestCase) -> None:
+        around = surroundings(_line(_run(HELD, FRAMES), coherent=test_case.coherent), MIDDLE, PROFILES)
+
+        assert around.heard([], np.zeros((0, len(POWER)))).shape == (0, len(POWER))
 
 
 class TestSettlingAFrame:
