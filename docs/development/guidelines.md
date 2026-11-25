@@ -23,7 +23,7 @@ These rules govern the Python in this repository. They complement
 1. Move a stored data version once per release. The version a build writes between releases is still being written. A further change to that format therefore extends the upgrade step already pending, and one step carries the whole distance from the version the last release shipped. Libraries are rebuilt from their settings, so a change to what library generation produces moves the library version alone. See [data compatibility](release/compatibility.md).
 1. A risk named while planning lands as a case or a ledger entry. A plan records intent, and a case and the ledger carry a doubt past the moment it was felt. Where the risk is a behavior that might be wrong, write the case that would catch it. Where it is a distance the change accepts, write the entry in [bugs and todos](bugs-and-todos.md) that names it, as [the ledger](#the-ledger) asks.
 1. Run `pre-commit` on new files after each change.
-1. Run the tests relevant to the code a phase touches after that phase. Run the full suite, screen scenarios included (`make test` and `make screens`), after the final phase. CI runs the same passes on every push, so the `pre-push` stage holds only the `icons` hook.
+1. Run the tests relevant to the code a phase touches after that phase. After the final phase, run `make check`: pre-commit on every file, the doctests, the full suite and the screen scenarios, the passes CI runs on every push. It marks the commit they all passed on, while no file differs from that commit, and the `checked-commit` hook of the `pre-push` stage lets a push through once the commit it sends is marked ([the checked commit](tooling.md#the-checked-commit)). The `icons` hook runs at the same stage.
 
 ## Ownership
 

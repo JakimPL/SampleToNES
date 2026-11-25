@@ -151,3 +151,23 @@ names. `project.py` holds what `pyproject.toml` says, read with `tomllib`, which
 
 The tests are run as named passes: the suite, the doctests, the screen scenarios and the benchmarks. Each pass is a make target.
 CI runs the doctests, the suite and the screen scenarios as steps of their own, so a failure names its pass. The benchmarks run locally, where timings are reproducible.
+
+### The checked commit
+
+A push goes through once the hooks and the tests have passed on the commit it sends. The suite and
+the screen scenarios take far longer than a push can wait, since git holds the connection to the
+remote open while a pre-push hook works. So the checks run before the push and leave a mark, and the
+push looks the mark up.
+
+`make check` runs pre-commit over every file, then the doctests, the suite and the screen scenarios.
+Every check runs whatever the earlier ones reported, so one run shows everything that is wrong. The
+run marks the commit when every check passed and the work tree held exactly that commit's files from
+the start of the run to its end. A run over uncommitted files marks nothing, and it says so as it
+starts.
+
+The `checked-commit` pre-push hook lets a push through once the commit it sends is marked, and a tag
+through once the commit it names is. A mark names the files a check passed on, so every commit
+holding the same files carries it: a reworded commit, or a merge of a checked branch into one that
+has stayed where the branch left it. The marks live in the git directory every worktree shares, so a
+check run in one worktree serves a push from any other. `make pre-commit` installs the hook with the
+commit hooks. A change reaches the remote in three steps: commit, run `make check`, push.

@@ -116,3 +116,12 @@ repos:
         verbose: true
         stages:
           - pre-push
+
+      - id: checked-commit
+        name: checked commit
+        entry: uv run --no-project python scripts/verify_pushed_commit.py
+        language: system
+        always_run: true
+        pass_filenames: false
+        stages:
+          - pre-push

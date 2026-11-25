@@ -68,7 +68,7 @@ whole repository. The pages about the graphical application and about releases e
 
 - [Architecture](development/architecture.md) — the application's layers and the contracts between them.
 - [Package layers](development/packages.md) — the packages of the repository, and the order they import each other in.
-- [Tooling](development/tooling.md) — the `sampletones` command, the tools package, the checkout units and the bootstrap scripts, with what each runs on and what it may import.
+- [Tooling](development/tooling.md) — the `sampletones` command, the tools package, the checkout units and the bootstrap scripts, with what each runs on and what it may import, and the check a push waits for.
 - [Assets](development/assets.md) — the unit that makes the repository's own content: the icon suite, the demo tree, and the pictures of the application in the guide and the README.
 - [Coding guidelines](development/guidelines.md) — conventions for the codebase.
 - [Writing the documentation](development/documentation.md) — who each document is written for, and how it reads.
