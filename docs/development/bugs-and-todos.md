@@ -185,11 +185,6 @@ currently out of line. An entry leaves when the code meets the contract again.
   interchangeable, so a note the second pulse's drive matches goes unsearched
   ([stems](../concepts/stems.md) scores channels driven differently apart). Searching every placement of a
   kind's proposals where its channels' drives differ closes it.
-* Around a note cut at a frame boundary, the frames beside the cut read 1.2 to 4 times what the window
-  model predicts, under `fft` and `logfft` at every frequency and under `cqt` below about 460 Hz, since
-  the cut spreads the note's energy into the bins beside it. The neighbor pass hears those frames through
-  the model. Modeling how each library row's partials reach each bin through the window, read when the
-  library is built, closes it.
 * Another voice inside a harmonic's bin pulls the pitch reading. A partial of another voice within half a
   semitone of one of a note's harmonics shares that harmonic's bin and adds to its reading: a 65 Hz bass
   under a steady 330 Hz pulse reads about 4 cents off, and within a cent alone.
