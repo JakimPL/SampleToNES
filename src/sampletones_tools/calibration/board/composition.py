@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Dict, Final, List, Optional, Sequence, Tuple
+from typing import Dict, Final, List, Optional, Sequence, Set, Tuple
 
 from sampletones_core.constants.enums import ChannelName, ordered_channels
 from sampletones_shared.paths.extensions import EXT_FILE_FLAC
@@ -7,10 +7,21 @@ from sampletones_shared.utils.system.paths import get_filename
 from sampletones_tools.calibration.config.level import VariantLevel
 from sampletones_tools.calibration.layout import combination_name
 from sampletones_tools.calibration.renders import RenderRecord, item_directory, recording_path, variant_directory
+from sampletones_tools.calibration.variants import LABEL_SEPARATOR
 from sampletones_tools.web.roles.table import channel_role
 
 from .clips import ClipStore
-from .model import BoardCell, BoardChannel, BoardGlyphs, BoardGroup, BoardPage, BoardRecording, BoardRow
+from .headings import heading_column, shared_words
+from .model import (
+    BoardCell,
+    BoardChannel,
+    BoardFamily,
+    BoardGlyphs,
+    BoardGroup,
+    BoardPage,
+    BoardRecording,
+    BoardRow,
+)
 from .reading import RunReading
 
 NO_CLIP: Final[str] = ""
@@ -58,7 +69,7 @@ def _column_group(run: RunReading, store: ClipStore) -> Tuple[BoardGroup, ...]:
     """One table whose columns are the configurations the run measured."""
     variants = run.variants
     rows = _rows(store, _items(run), [(run, variant) for variant in variants])
-    return (BoardGroup(name=run.label, columns=variants, rows=rows),)
+    return (_group(run.label, variants, rows),)
 
 
 def _variant_groups(runs: Sequence[RunReading], store: ClipStore) -> Tuple[BoardGroup, ...]:
@@ -67,9 +78,34 @@ def _variant_groups(runs: Sequence[RunReading], store: ClipStore) -> Tuple[Board
     for variant in _shared_variants(runs):
         holders = [run for run in runs if variant in run.variants]
         rows = _rows(store, _shared_items(holders), [(run, variant) for run in holders])
-        groups.append(BoardGroup(name=variant, columns=tuple(run.label for run in holders), rows=rows))
+        groups.append(_group(variant, [run.label for run in holders], rows))
 
     return tuple(groups)
+
+
+def _group(name: str, columns: Sequence[str], rows: Tuple[BoardRow, ...]) -> BoardGroup:
+    """A tab of these columns and rows, each heading naming what its column adds to the words they share."""
+    prefix = shared_words(columns)
+    return BoardGroup(
+        name=name,
+        prefix=LABEL_SEPARATOR.join(prefix),
+        columns=tuple(heading_column(column, prefix) for column in columns),
+        families=_families(rows),
+        rows=rows,
+    )
+
+
+def _families(rows: Sequence[BoardRow]) -> Tuple[BoardFamily, ...]:
+    """A family per name the rows carry, in the order they first name it, with every channel its cells sound."""
+    sounding: Dict[str, Set[ChannelName]] = {}
+    for row in rows:
+        channels = sounding.setdefault(row.family, set())
+        channels.update(ChannelName(channel.name) for cell in row.cells for channel in cell.channels)
+
+    return tuple(
+        BoardFamily(name=family, channels=tuple(channel.value for channel in ordered_channels(channels)))
+        for family, channels in sounding.items()
+    )
 
 
 def _rows(

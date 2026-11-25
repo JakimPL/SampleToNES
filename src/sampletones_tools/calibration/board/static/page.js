@@ -2,6 +2,8 @@ const MESSAGES = {
   lead: (referee) => `Scored by ${referee}; higher is closer to the recording, and zero is exact.`,
   heading: (title, run) => `${title}: ${run}`,
   sounds: (count) => (count === 1 ? "1 sound" : `${count} sounds`),
+  prefix: (prefix) => `Every version's name starts with ${prefix}. The headings show only the rest.`,
+  base: "base",
   sound: "sound",
   recording: "recording",
   change: "change",
@@ -109,22 +111,53 @@ function gradient(timeline, role) {
   return `linear-gradient(90deg, ${stops.join(", ")})`;
 }
 
-/**
- * One channel of a cell: its swatch, its solo and mute clips where the render holds other
- * channels too, and the bar of the frames it sounds.
- */
-function channelRow(channel, role) {
-  const row = element("div", "channel");
-  const swatch = swatchNode(role);
-  swatch.title = channel.name;
-  row.append(swatch);
-  if (channel.solo) { row.append(partNode(MESSAGES.solo, channel.solo)); }
-  if (channel.mute) { row.append(partNode(MESSAGES.mute, channel.mute)); }
-  const bar = element("div", "bar");
+/** A channel's solo and mute clips, each where the render holds other channels too. */
+function partsNode(channel) {
+  const parts = element("span", "parts");
+  if (channel.solo) { parts.append(partNode(MESSAGES.solo, channel.solo)); }
+  if (channel.mute) { parts.append(partNode(MESSAGES.mute, channel.mute)); }
+  return parts;
+}
+
+/** The bar of the frames a channel sounds. */
+function barNode(channel, role) {
+  const bar = element("span", "bar");
   bar.style.backgroundImage = gradient(channel.timeline, role);
   bar.title = channel.name;
-  row.append(bar);
-  return row;
+  return bar;
+}
+
+/** The lane of a channel the render sounds: its square, its solo and mute clips, and its bar. */
+function soundingLane(channel, role) {
+  const lane = element("div", "lane");
+  const square = swatchNode(role);
+  square.title = channel.name;
+  lane.append(square, partsNode(channel), barNode(channel, role));
+  return lane;
+}
+
+/**
+ * The lane kept for a channel the render leaves out: an empty square, and blank places where a
+ * sounding lane holds its clips and its bar, so an open cell's columns stay in line.
+ */
+function silentLane() {
+  const lane = element("div", "lane");
+  lane.append(element("span", "swatch empty"), element("span"), element("span"));
+  return lane;
+}
+
+/**
+ * A cell's lanes, one per channel of its family in the family's order, so a channel stands at one
+ * height in every cell of a row whichever channels each render holds.
+ */
+function lanesNode(cell, channels, colors) {
+  const lanes = element("div", "lanes");
+  const sounding = new Map(cell.channels.map((channel) => [channel.name, channel]));
+  for (const name of channels) {
+    const channel = sounding.get(name);
+    lanes.append(channel ? soundingLane(channel, colors[name]) : silentLane());
+  }
+  return lanes;
 }
 
 /**
@@ -155,22 +188,29 @@ function fromSilence(cell) {
   return MESSAGES.closed(Math.log(cell.silence / cell.score).toFixed(SHOWN_DIGITS));
 }
 
-/** One render under one column: its play button, its readings, and a row per channel. */
-function cellNode(cell, board) {
-  const node = element("div", "cell");
-  const render = clip(board.glyphs.play, cell.render, "button clip glyph-button");
+/** The button playing a whole render. */
+function playNode(cell, glyph) {
+  const render = clip(glyph, cell.render, "button clip glyph-button");
   render.title = MESSAGES.play;
   render.setAttribute("aria-label", MESSAGES.play);
-  node.append(render);
+  return render;
+}
+
+/** A render's score over how far it stands from silence. */
+function readingNode(cell) {
   const reading = element("div", "reading");
   reading.append(element("b", null, rounded(closeness(cell))));
   reading.append(element("span", null, fromSilence(cell)));
-  node.append(reading);
-  const channels = element("div", "channels");
-  for (const channel of cell.channels) {
-    channels.append(channelRow(channel, board.colors[channel.name]));
-  }
-  node.append(channels);
+  return reading;
+}
+
+/**
+ * One render under one column: its play button, its readings and its lanes. A closed column shows
+ * each lane's square, and an open one adds the channel's solo and mute clips and its bar.
+ */
+function cellNode(cell, channels, board) {
+  const node = element("div", "cell");
+  node.append(playNode(cell, board.glyphs.play), readingNode(cell), lanesNode(cell, channels, board.colors));
   return node;
 }
 
@@ -202,42 +242,40 @@ function recordingsNode(row) {
   return node;
 }
 
-/** One sound across the table: its name, its recordings, a cell per column and the change. */
-function rowNode(row, board) {
+/** One sound across the table: its name, its recordings, a cell per version and the change. */
+function rowNode(row, channels, board) {
   const node = element("tr", "sound-row");
   const sound = element("td", "sound");
   sound.append(breakable(row.item));
   node.append(sound);
   node.append(recordingsNode(row));
-  for (const cell of row.cells) {
-    const holder = element("td");
-    holder.append(cellNode(cell, board));
+  row.cells.forEach((cell, place) => {
+    const holder = inColumn(element("td", "version"), place);
+    holder.append(cellNode(cell, channels, board));
     node.append(holder);
-  }
+  });
   node.append(changeNode(row));
   return node;
 }
 
-/** A heading row naming a category, spanning every column of the table. */
+/**
+ * A heading row naming a category, spanning every column of the table. The name stays in view as
+ * the table scrolls sideways.
+ */
 function categoryNode(name, span) {
   const node = element("tr", "category");
-  const heading = element("th", null, name);
+  const heading = element("th");
+  heading.append(element("span", null, name));
   heading.colSpan = span;
   heading.scope = "colgroup";
   node.append(heading);
   return node;
 }
 
-/** The swatch and name of every channel the rows sound, in the order the page's colors list them. */
-function legendNode(rows, colors) {
-  const sounding = new Set();
-  for (const row of rows) {
-    for (const cell of row.cells) {
-      for (const channel of cell.channels) { sounding.add(channel.name); }
-    }
-  }
+/** The swatch and name of every channel a family sounds. */
+function legendNode(channels, colors) {
   const legend = element("span", "legend");
-  for (const name of Object.keys(colors).filter((channel) => sounding.has(channel))) {
+  for (const name of channels) {
     const entry = element("span");
     entry.append(swatchNode(colors[name]), element("span", null, name));
     legend.append(entry);
@@ -246,32 +284,66 @@ function legendNode(rows, colors) {
 }
 
 /**
- * The table's columns, each by its width class and its heading: the sound, the recording, a
- * version per column the data names, and the change.
+ * The table's columns, each by its class: the sound, the recording, a version per column the data
+ * names, and the change. A version carries its column and its place among the versions.
  */
 function tableColumns(columns) {
   return [
     { className: "sound", heading: MESSAGES.sound },
     { className: "recording", heading: MESSAGES.recording },
-    ...columns.map((column) => ({ className: "version", heading: column })),
+    ...columns.map((column, place) => ({ className: "version", column, place })),
     { className: "change", heading: MESSAGES.change },
   ];
+}
+
+/**
+ * Marks a node as standing in the version column at `place`. A column's width, heading and cells
+ * all carry the mark, which opening and closing the column finds them by.
+ */
+function inColumn(node, place) {
+  node.dataset.column = String(place);
+  return node;
 }
 
 /** A column per table column, carrying the class its width is set by. */
 function widthsNode(layout) {
   const widths = element("colgroup");
-  for (const { className } of layout) {
-    widths.append(element("col", className));
+  for (const { className, column, place } of layout) {
+    widths.append(column ? inColumn(element("col", className), place) : element("col", className));
   }
   return widths;
 }
 
-/** The heading row, a heading per table column. */
-function headNode(layout) {
+/** The words a version's heading shows: those its name adds to the shared prefix, or the base's name. */
+function headingWords(column) {
+  return column.words.length ? column.words : [MESSAGES.base];
+}
+
+/**
+ * A version's heading, which opens and closes its column: a chevron telling which it is, then the
+ * words of the column's name one per line, so a long name keeps a closed column narrow. The whole
+ * name stays in the tooltip.
+ */
+function versionHeading(column, place, glyphs) {
+  const heading = inColumn(element("th", "version"), place);
+  heading.title = column.name;
+  const toggle = element("button", "column-toggle");
+  toggle.setAttribute("aria-expanded", "false");
+  toggle.append(element("span", "column-chevron", glyphs.collapsed));
+  headingWords(column).forEach((word, index) => {
+    if (index > 0) { toggle.append(element("br")); }
+    toggle.append(word);
+  });
+  heading.append(toggle);
+  heading.addEventListener("click", () => toggleColumn(heading, glyphs));
+  return heading;
+}
+
+/** The heading row: a plain heading per fixed column, and an opening one per version. */
+function headNode(layout, glyphs) {
   const head = element("tr");
-  for (const { heading } of layout) {
-    const cell = element("th", null, heading);
+  for (const { className, heading, column, place } of layout) {
+    const cell = column ? versionHeading(column, place, glyphs) : element("th", className, heading);
     cell.scope = "col";
     head.append(cell);
   }
@@ -281,13 +353,13 @@ function headNode(layout) {
 }
 
 /** The sound rows, a category heading opening each stretch of rows of one category. */
-function bodyNode(rows, span, board) {
+function bodyNode(rows, channels, span, board) {
   const body = element("tbody");
   let category = null;
   for (const row of rows) {
     if (row.category !== category) { body.append(categoryNode(row.category, span)); }
     category = row.category;
-    body.append(rowNode(row, board));
+    body.append(rowNode(row, channels, board));
   }
   return body;
 }
@@ -296,12 +368,45 @@ function bodyNode(rows, span, board) {
  * A family's table. Its fixed layout holds every column at its width, so tables of different
  * families line up, and the number of version columns sets how wide the table must stay.
  */
-function tableNode(columns, rows, board) {
+function tableNode(columns, family, rows, board) {
   const layout = tableColumns(columns);
   const table = element("table", "table sounds");
   table.style.setProperty("--columns", String(columns.length));
-  table.append(widthsNode(layout), headNode(layout), bodyNode(rows, layout.length, board));
+  table.append(
+    widthsNode(layout),
+    headNode(layout, board.glyphs),
+    bodyNode(rows, family.channels, layout.length, board),
+  );
   return table;
+}
+
+/**
+ * Opens or closes the version column a heading heads, in every table of its group, so the
+ * families' tables keep lining up.
+ */
+function toggleColumn(heading, glyphs) {
+  const panel = heading.closest("section.group");
+  const place = heading.dataset.column;
+  const open = !heading.classList.contains("open");
+  for (const node of panel.querySelectorAll(`[data-column="${place}"]`)) {
+    node.classList.toggle("open", open);
+  }
+  for (const toggle of panel.querySelectorAll(`th[data-column="${place}"] .column-toggle`)) {
+    toggle.setAttribute("aria-expanded", String(open));
+    toggle.querySelector(".column-chevron").textContent = open ? glyphs.expanded : glyphs.collapsed;
+  }
+  spread(panel);
+}
+
+/**
+ * Tells a group how many of its columns are open, which its tables widen by. While any is open,
+ * the group spreads every lane to a bar's height, so a channel's square stands level with its bar
+ * in every cell of a row.
+ */
+function spread(panel) {
+  const opened = panel.querySelector("table.sounds").querySelectorAll("th.version.open").length;
+  panel.style.setProperty("--open-columns", String(opened));
+  panel.classList.toggle("spread", opened > 0);
 }
 
 /** Sets a card's chevron to the glyph of its state, open or closed. */
@@ -319,38 +424,30 @@ function familyNode(family, rows, columns, board, open) {
   const header = element("summary", "card-header");
   header.append(
     element("span", "card-glyph", board.glyphs.header),
-    element("span", "card-title", family),
+    element("span", "card-title", family.name),
     element("span", "count", MESSAGES.sounds(rows.length)),
-    legendNode(rows, board.colors),
+    legendNode(family.channels, board.colors),
     element("span", "card-chevron"),
   );
   card.append(header);
   const scroll = element("div", "table-scroll");
-  scroll.append(tableNode(columns, rows, board));
+  scroll.append(tableNode(columns, family, rows, board));
   card.append(scroll);
   card.addEventListener("toggle", () => chevron(card, board.glyphs));
   chevron(card, board.glyphs);
   return card;
 }
 
-/** The rows by family, the families in the order the rows first name them. */
-function byFamily(rows) {
-  const held = new Map();
-  for (const row of rows) {
-    if (!held.has(row.family)) { held.set(row.family, []); }
-    held.get(row.family).push(row);
-  }
-  return held;
-}
-
 /**
- * A group's panel: a card per family. The first family opens, so the page starts with sounds to
- * hear and the rest stay folded until asked for.
+ * A group's panel: the prefix its versions' names share, then a card per family. The first family
+ * opens, so the page starts with sounds to hear and the rest stay folded until asked for.
  */
 function groupNode(group, board) {
   const panel = element("section", "group");
   panel.dataset.group = group.name;
-  Array.from(byFamily(group.rows)).forEach(([family, rows], index) => {
+  if (group.prefix) { panel.append(element("p", "prefix", MESSAGES.prefix(group.prefix))); }
+  group.families.forEach((family, index) => {
+    const rows = group.rows.filter((row) => row.family === family.name);
     panel.append(familyNode(family, rows, group.columns, board, index === 0));
   });
   return panel;
@@ -361,9 +458,15 @@ function shownRows() {
   return Array.from(document.querySelectorAll("section.group:not([hidden]) details[open] tr.sound-row"));
 }
 
-/** Every clip button of a row, in the order the row shows them. */
+/**
+ * The clip buttons a row shows, in the order it shows them, so a closed column's solo and mute
+ * clips are passed over. The clip playing counts as shown, so a step leaves from its place even
+ * once its column has closed over it.
+ */
 function rowClips(row) {
-  return Array.from(row.querySelectorAll("button.clip"));
+  return Array.from(row.querySelectorAll("button.clip")).filter(
+    (button) => button === playing || button.checkVisibility(),
+  );
 }
 
 /** The row a clip button stands in. */

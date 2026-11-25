@@ -79,7 +79,13 @@ says how many sounds the family lists and which channels play them.
 Inside a card, each category of sounds has its own heading. Each row is one reference sound, with a
 **recording** button that plays the original, and each column is one variant. A run of several
 [levels](#custom-runs) gives each row one such button per level, named `default` and `true`, since each
-level prepares the original at a level of its own. Each cell has:
+level prepares the original at a level of its own.
+
+When every variant's name starts with the same words, such as `cqt-pe1`, a line above the cards states
+them once. The column headings show only the rest of the name, one word per line. Point at a heading to
+see the whole name. The variant named by the shared words alone is called **base**.
+
+Each cell has:
 
 - **▶**, which plays the whole reconstruction from its beginning.
 - The score beside it, with its sign turned, so higher is closer to the recording and zero is exact.
@@ -88,17 +94,25 @@ level prepares the original at a level of its own. Each cell has:
   Zero is as close as silence, each nat brings the reconstruction about 2.7 times closer to the
   recording, and a value below zero stands farther from it than silence does. An exact reconstruction
   reads **exact**.
-- One bar per channel, showing the frames that channel plays, in the channel's own color.
+- One square per channel the family plays. A square is filled in the channel's own color where the
+  reconstruction plays that channel, and empty where that channel is unused. Each channel keeps the same
+  place in every cell of a family, so you can compare a row across its columns.
 
 The last column shows the change from the first column to the last. A rise means the last variant is
 closer to the recording.
+
+Every column starts closed. Click a column's heading to open it in every card of the tab. Click it again
+to close it. An open column adds a bar beside each square, showing the frames where that channel plays.
+When the open columns are wider than the page, the table scrolls sideways and the sound names stay in
+view.
 
 Beside each bar, **S** plays that channel alone and **M** plays every other channel. You hear what one
 channel contributes and what the rest sound like without it. Both are separate recordings the run wrote,
 so switching between them is exact.
 
-<kbd>Space</kbd> pauses and resumes, <kbd>&larr;</kbd> and <kbd>&rarr;</kbd> move across one
-sound's versions, and <kbd>&uarr;</kbd> and <kbd>&darr;</kbd> move to another sound in the open cards.
+<kbd>Space</kbd> pauses and resumes. <kbd>&larr;</kbd> and <kbd>&rarr;</kbd> move across one sound's
+versions and across the **S** and **M** buttons of the open columns. <kbd>&uarr;</kbd> and
+<kbd>&darr;</kbd> move to another sound in the open cards.
 
 The page is drawn in the program's own colors. `--palette NAME` draws it in another of the
 program's palettes, and `--no-open` leaves it closed and prints its link alone.

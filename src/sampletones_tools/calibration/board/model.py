@@ -74,21 +74,56 @@ class BoardRow(BaseModel):
     cells: Tuple[BoardCell, ...]
 
 
+class BoardColumn(BaseModel):
+    """One column of a group: the name it stands for, and the words its heading shows.
+
+    Attributes:
+        name: The column's whole name, the label of a variant or of a run.
+        words: The words of the name past the prefix every column of the group shares, one per line
+            of the heading. A column named by the prefix alone holds none, as the base configuration
+            the other columns add to.
+    """
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    name: str
+    words: Tuple[str, ...]
+
+
+class BoardFamily(BaseModel):
+    """One family of a group, which the page draws as a card of its own.
+
+    Attributes:
+        name: The family's name, which heads its card.
+        channels: Every channel a render of the family sounds, in the order the hardware holds them.
+            Each cell of the family keeps a lane for every one of them, so a channel stands at one
+            height across a row whichever channels each render holds.
+    """
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    name: str
+    channels: Tuple[str, ...]
+
+
 class BoardGroup(BaseModel):
     """One tab of the page: the columns it holds side by side, and the sounds they reconstruct.
 
-    The page lays the rows out in one card per family, in the order the rows first name them.
-
     Attributes:
         name: What the group is called on its tab.
-        columns: The column headings, in the order the cells follow.
+        prefix: The words every column's name starts with, joined as the names join them, which the
+            page states once for the group; empty where the names share none.
+        columns: The columns, in the order the cells follow.
+        families: One per card, in the order the rows first name them.
         rows: One row per reference sound.
     """
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     name: str
-    columns: Tuple[str, ...]
+    prefix: str
+    columns: Tuple[BoardColumn, ...]
+    families: Tuple[BoardFamily, ...]
     rows: Tuple[BoardRow, ...]
 
 

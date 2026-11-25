@@ -29,7 +29,7 @@ class TestOneRun:
         page = page_of([run], run)
 
         assert [group.name for group in page.groups] == ["run-a"]
-        assert page.groups[0].columns == ("cqt-pe1", "fft-pe1")
+        assert [column.name for column in page.groups[0].columns] == ["cqt-pe1", "fft-pe1"]
 
     def test_every_sound_reads_across_the_whole_table(self, run: Path) -> None:
         group = page_of([run], run).groups[0]
@@ -66,7 +66,7 @@ class TestOneRun:
     def test_the_columns_follow_the_order_the_run_measured_its_variants_in(self, tmp_path: Path) -> None:
         run = write_run(tmp_path / "run", ["fft-pe1", "cqt-pe1"], 0.0)
 
-        assert page_of([run], run).groups[0].columns == ("fft-pe1", "cqt-pe1")
+        assert [column.name for column in page_of([run], run).groups[0].columns] == ["fft-pe1", "cqt-pe1"]
 
     def test_a_row_of_one_level_offers_the_recording_its_cells_reconstruct(self, run: Path) -> None:
         row = page_of([run], run).groups[0].rows[0]
@@ -102,6 +102,39 @@ class TestOneRun:
         assert page.colors == {channel.value: channel_role(channel.value) for channel in ChannelName}
 
 
+class TestHeadings:
+    def test_a_group_states_the_words_its_columns_share_once(self, tmp_path: Path) -> None:
+        run = write_run(tmp_path / "run", ["cqt-pe1", "cqt-pe1-joint"], 0.0)
+
+        group = page_of([run], run).groups[0]
+
+        assert group.prefix == "cqt-pe1"
+        assert [column.words for column in group.columns] == [(), ("joint",)]
+
+    def test_columns_sharing_no_words_keep_every_word(self, run: Path) -> None:
+        group = page_of([run], run).groups[0]
+
+        assert group.prefix == ""
+        assert [column.words for column in group.columns] == [("cqt", "pe1"), ("fft", "pe1")]
+
+
+class TestFamilies:
+    def test_a_family_per_name_in_the_order_the_rows_first_name_them(self, run: Path) -> None:
+        group = page_of([run], run).groups[0]
+
+        assert [family.name for family in group.families] == ["sines", "composites"]
+
+    def test_a_family_holds_every_channel_its_renders_sound_in_the_order_the_hardware_holds_them(
+        self, run: Path
+    ) -> None:
+        group = page_of([run], run).groups[0]
+
+        assert [family.channels for family in group.families] == [
+            (ChannelName.TRIANGLE.value,),
+            (ChannelName.PULSE1.value, ChannelName.TRIANGLE.value, ChannelName.NOISE.value),
+        ]
+
+
 class TestChannels:
     def test_a_lone_channel_offers_nothing_to_switch(self, run: Path) -> None:
         cell = page_of([run], run).groups[0].rows[0].cells[0]
@@ -130,7 +163,7 @@ class TestSeveralRuns:
         page = page_of(runs, tmp_path / "page")
 
         assert [group.name for group in page.groups] == ["cqt-pe1", "fft-pe1"]
-        assert all(group.columns == ("before", "after") for group in page.groups)
+        assert all([column.name for column in group.columns] == ["before", "after"] for group in page.groups)
 
     def test_a_row_holds_one_cell_per_run(self, runs: List[Path], tmp_path: Path) -> None:
         group = page_of(runs, tmp_path / "page").groups[0]

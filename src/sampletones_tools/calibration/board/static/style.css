@@ -6,14 +6,24 @@
   /* A channel's bar, thin so a cell's channels stack beside its readings. */
   --bar-height: 6px;
   --bar-radius: 2px;
-  /* The version columns of a table; each table sets its own count. */
+  /*
+   * A channel's lane: as tall as its square while every column of the group is closed, and as tall
+   * as its solo and mute clips once one opens.
+   */
+  --square-lane: 10px;
+  --bar-lane: 20px;
+  /* The version columns of a table, and those open; each table sets its count, each group its open ones. */
   --columns: 1;
+  --open-columns: 0;
   /* The width of each column, fixed so the tables of every family line up. */
-  --sound-width: 200px;
+  --sound-width: 152px;
   --recording-width: 104px;
-  --version-width: 296px;
+  --closed-width: 110px;
+  --open-width: 272px;
   --change-width: 72px;
-  /* The page's width, which holds four version columns side by side. */
+  /* The width a cell's score and its nats keep, so a column's squares stand in one line. */
+  --reading-width: 4em;
+  /* The page's width, which holds every closed column and two open ones side by side. */
   --board-width: 1600px;
   /* The space between family cards, wider than within a card so the families read apart. */
   --family-gap: calc(2 * var(--panel-gap));
@@ -44,6 +54,13 @@
   display: flex;
   flex-direction: column;
   gap: var(--family-gap);
+}
+
+/* The prefix a group's versions share, stated once above its cards. */
+.prefix {
+  margin: 0;
+  padding-inline: var(--card-padding-x);
+  color: var(--text-muted);
 }
 
 /* The keys' help, sitting within the status bar's height. */
@@ -107,19 +124,27 @@ details.card[open] > summary {
 }
 
 /*
- * A family's table holds every column at its width, and grows wider than the page rather than
- * squeezing its versions, its card scrolling sideways instead.
+ * A family's table holds every column at its width, and grows wider than the page once its open
+ * columns need the room, its card scrolling sideways.
  */
 .table.sounds {
   table-layout: fixed;
   min-width: calc(
-    var(--sound-width) + var(--recording-width) + var(--change-width) + var(--columns) * var(--version-width)
+    var(--sound-width) + var(--recording-width) + var(--change-width) + (var(--columns) - var(--open-columns)) *
+      var(--closed-width) + var(--open-columns) * var(--open-width)
   );
 }
 
-/* The fixed columns; the version columns share the width that remains. */
+/*
+ * The fixed columns. The version columns share the width that remains, and once one opens, the
+ * closed ones keep their own width and the open ones share the rest.
+ */
 col.sound {
   width: var(--sound-width);
+}
+
+.group.spread col.version:not(.open) {
+  width: var(--closed-width);
 }
 
 col.recording {
@@ -137,10 +162,74 @@ col.change {
   padding-top: calc(2 * var(--item-spacing-y));
 }
 
-/* The row playing, outlined inside its edges so the table's scrolling clips none of it. */
+/* A category's name and a sound's name stay in view while the table scrolls sideways. */
+.table tbody tr.category th span {
+  position: sticky;
+  left: var(--cell-padding-x);
+}
+
+.table.sounds th.sound,
+.table.sounds td.sound {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+}
+
+.table.sounds td.sound {
+  background: inherit;
+}
+
+/* The headings hang from the top, so the versions' chevrons stand in one line. */
+.table.sounds thead th {
+  vertical-align: top;
+}
+
+/* A version's heading opens and closes its column, its words stacked one per line. */
+.table.sounds th.version {
+  cursor: pointer;
+}
+
+.table.sounds th.version:hover {
+  background: var(--card-header-hover);
+}
+
+.column-toggle {
+  appearance: none;
+  margin: 0;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.column-toggle:focus-visible {
+  outline: 1px solid var(--focus);
+}
+
+/* The chevron, drawn in the application's icon face, as a card's is. */
+.column-chevron {
+  margin-right: var(--swatch-gap);
+  font-family: var(--font-icon);
+  font-size: var(--size-icon-tiny);
+}
+
+/*
+ * The row playing, outlined inside its edges so the table's scrolling clips none of it. The sound's
+ * cell stands over the row's left end, so it draws its part of the outline itself.
+ */
 .table tbody tr.playing {
   outline: 1px solid var(--heading);
   outline-offset: -1px;
+}
+
+.table tbody tr.playing td.sound {
+  box-shadow:
+    inset 1px 0 var(--heading),
+    inset 0 1px var(--heading),
+    inset 0 -1px var(--heading);
 }
 
 /* A sound's name, wrapping anywhere where a part of it outgrows the column. */
@@ -158,16 +247,26 @@ td.recording .button + .button {
   margin-top: var(--channel-gap);
 }
 
-/* A cell's play button, readings and channels in one line. */
+/*
+ * A version's heading and cells keep half the table's padding at their sides, so eight closed
+ * columns share a narrow page.
+ */
+.table.sounds th.version,
+.table.sounds td.version {
+  padding-inline: calc(var(--cell-padding-x) / 2);
+}
+
+/* A cell's play button, readings and lanes in one line. */
 .cell {
   display: flex;
   align-items: center;
-  gap: var(--item-spacing-x);
+  gap: var(--swatch-gap);
 }
 
-/* The play button, drawn in the application's icon face. */
+/* The play button, drawn in the application's icon face and as narrow as its glyph. */
 .button.glyph-button {
   flex: none;
+  padding-inline: var(--button-padding-y);
   font-family: var(--font-icon);
   font-size: var(--size-icon-tiny);
 }
@@ -175,6 +274,7 @@ td.recording .button + .button {
 /* A cell's readings keep their width, the score over the nats from silence. */
 .reading {
   flex: none;
+  min-width: var(--reading-width);
   white-space: nowrap;
   font-family: var(--font-mono);
 }
@@ -191,26 +291,52 @@ td.recording .button + .button {
   color: var(--text-muted);
 }
 
-/* A cell's channels, stacked in the cell's remaining width, which they may shrink to. */
-.channels {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  gap: var(--channel-gap);
-  min-width: 0;
+/*
+ * A cell's lanes, a row per channel of the family at the group's lane height. A closed column shows
+ * the squares alone; an open one lines the squares, the solo and mute clips and the bars up in
+ * columns of their own across the cell's remaining width.
+ */
+.lanes {
+  --lane-height: var(--square-lane);
+  display: grid;
+  grid-auto-rows: var(--lane-height);
+  align-items: center;
+  gap: var(--channel-gap) var(--swatch-gap);
 }
 
-/* A channel: its swatch, its solo and mute clips and its bar, in one line. */
-.channel {
+.group.spread .lanes {
+  --lane-height: var(--bar-lane);
+}
+
+td.version.open .lanes {
+  flex: 1;
+  min-width: 0;
+  grid-template-columns: auto auto minmax(0, 1fr);
+}
+
+/* A lane lays its square, its clips and its bar straight into its cell's columns. */
+.lane {
+  display: contents;
+}
+
+td.version:not(.open) .lane > :not(.swatch) {
+  display: none;
+}
+
+/* The square of a channel the render leaves out, empty within its outline. */
+.swatch.empty {
+  box-shadow: inset 0 0 0 1px var(--table-border);
+}
+
+/* The solo and mute clips, as tall as the lane. */
+.parts {
   display: flex;
-  align-items: center;
+  align-self: stretch;
   gap: var(--swatch-gap);
 }
 
 /* The bar fills the rest of the line, the recess showing through the frames the channel rests. */
 .bar {
-  flex: 1;
-  min-width: 0;
   height: var(--bar-height);
   background: var(--recess);
   border-radius: var(--bar-radius);
