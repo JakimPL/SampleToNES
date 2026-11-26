@@ -239,6 +239,7 @@ def silenceless_matcher_fixture(config: Config, window: Window, extractor: Featu
         window=window,
         channels=channels,
         library_data=InstructionLibraryData.create(config, data),
+        layer_data=(),
         signal_length=JOINT_SIGNAL_LENGTH,
     ).matcher
 

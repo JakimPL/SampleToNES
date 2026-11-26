@@ -1,10 +1,11 @@
 from pathlib import Path
-from typing import Final
+from typing import Dict, Final, List
 
 import pytest
 from pydantic import ValidationError
 
 from sampletones_core.configs import Config
+from sampletones_core.constants.enums import SpectrumMethod
 from sampletones_shared.paths.user import LIBRARY_DIRECTORY, RECONSTRUCTIONS_DIRECTORY
 
 WORKERS: Final[int] = 3
@@ -56,3 +57,25 @@ class TestASettingsCopyWithItsWorkersSet:
     def test_fewer_than_one_worker_is_refused(self, count: int) -> None:
         with pytest.raises(ValidationError):
             Config().with_workers(count)
+
+
+class TestTheSpectrumLayers:
+    """Each spectrum method reads a frame once: the library's own, then each the generation adds."""
+
+    def test_a_layer_adds_a_method_the_library_reads_beside_its_own(self) -> None:
+        config = Config.model_validate({"generation": {"layers": [{"method": "logfft", "weight": 0.5}]}})
+
+        assert [layer.method for layer in config.generation.layers] == [SpectrumMethod.LOG_SPACED_FFT]
+
+    @pytest.mark.parametrize(
+        "layers",
+        [[{"method": "cqt", "weight": 1.0}], [{"method": "fft", "weight": 1.0}, {"method": "fft", "weight": 2.0}]],
+        ids=["the_library_s_own", "one_method_twice"],
+    )
+    def test_a_method_read_twice_is_refused(self, layers: List[Dict[str, object]]) -> None:
+        with pytest.raises(ValidationError, match="reads the frames once"):
+            Config.model_validate({"generation": {"layers": layers}})
+
+    def test_a_layer_of_no_weight_is_refused(self) -> None:
+        with pytest.raises(ValidationError):
+            Config.model_validate({"generation": {"layers": [{"method": "logfft", "weight": 0.0}]}})

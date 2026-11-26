@@ -108,6 +108,7 @@ def duty_matcher_fixture(
         window=window,
         channels=pulse_channels,
         library_data=InstructionLibraryData.create(config, data),
+        layer_data=(),
         signal_length=JOINT_SIGNAL_LENGTH,
     ).matcher
 

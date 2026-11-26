@@ -6,6 +6,7 @@ from sampletones_core.constants.spectrum import BINS_PER_OCTAVE, CQT_CUTOFF_FREQ
 from sampletones_core.fft import FFTTransformer, Window, calculate_weights_from_edges
 from sampletones_core.fft.cqt.frequencies import calculate_cqt_frequencies
 from sampletones_core.fft.cqt.geometry import resolvable_bins
+from sampletones_core.fft.layers import analysis_layers
 from sampletones_shared.array import xp
 
 
@@ -23,19 +24,42 @@ def calculate_spectral_weights(
     target signal is too short to resolve. The weighting policy of the criterion
     lives entirely in this module, so a change of perceptual model touches one place.
 
+    A frame read with several spectrum methods (``analysis_layers``) stacks their bins, and each
+    method's bins hold its layer's weight's share of the whole weight, spread over them as that
+    method weighs them alone. So the spectral loss reads every method in proportion to its layer's
+    weight, however many bins each holds.
+
     Args:
-        config: Configuration selecting the spectrum method and the perceptual exponent.
-        window: Analysis window of the configuration.
+        config: Configuration selecting the spectrum methods and the perceptual exponent.
+        window: Analysis window of the library's own method.
         signal_length: Number of samples of the matching target signal.
 
     Returns:
-        A weight per spectral bin, on the active array backend.
+        A weight per spectral bin, every layer's bins in order, on the active array backend.
     """
+    layers = analysis_layers(config)
+    windows = (window, *(layer.window for layer in layers[1:]))
+    perceptual = [_method_weights(layer.config, layer_window) for layer, layer_window in zip(layers, windows)]
+    bins = sum(int(weights.shape[-1]) for weights in perceptual)
+    total = sum(layer.weight for layer in layers)
+    return xp.concatenate(
+        [
+            _summing_to(weights, bins * layer.weight / total)
+            * _reliability_mask(layer.config, signal_length, int(weights.shape[-1]))
+            for layer, weights in zip(layers, perceptual)
+        ]
+    )
+
+
+def _method_weights(config: Config, window: Window) -> xp.ndarray:
+    """The perceptual weights of the bins one spectrum method reads, before any normalization."""
     metric = config.generation.metric
-    edges = _reference_edges(config, window)
-    weights = xp.asarray(calculate_weights_from_edges(edges, metric.perceptual_exponent))
-    weights = len(weights) * weights / xp.sum(weights)
-    return weights * _reliability_mask(config, signal_length, int(weights.shape[-1]))
+    return xp.asarray(calculate_weights_from_edges(_reference_edges(config, window), metric.perceptual_exponent))
+
+
+def _summing_to(weights: xp.ndarray, held: float) -> xp.ndarray:
+    """``weights`` scaled to sum to ``held``, each bin keeping its share of them."""
+    return held * weights / xp.sum(weights)
 
 
 def _reference_edges(config: Config, window: Window) -> np.ndarray:

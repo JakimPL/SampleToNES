@@ -258,6 +258,10 @@ refused before the run starts. The packaged sets:
 - `joint-fitted-combinations-neighbors1-tonal-inertia05`, `-tonal-inertia1`: the pass with the pulses and
   the triangle kept to their neighbors at an inertia of 0.5 and 1, the noise free;
   `joint-fitted-combinations-neighbors1-inertia05` keeps every channel at 0.5.
+- `joint-logfft`, `joint-fitted-combinations-logfft`, `joint-fitted-combinations-neighbors1-logfft`: the
+  joint assignment, the fitted level with whole combinations, and the pass, each reading every frame
+  with `logfft` beside the library's own method, at equal weight
+  ([several methods at once](../concepts/reconstruction.md#32-spectrum-methods-fft-log-fft-and-cqt)).
 
 `--levels true` matches every sound at the level its file holds, whatever working level its settings
 name, the fitted one included. For a sound written as NES frames that is the level the channels play

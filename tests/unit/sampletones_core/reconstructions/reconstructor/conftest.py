@@ -78,6 +78,7 @@ def worker(
         window=window,
         channels=channels,
         library_data=library_data,
+        layer_data=(),
         signal_length=WORKER_SIGNAL_LENGTH,
     )
 
@@ -216,5 +217,6 @@ def joint_matcher(
         window=window,
         channels=all_channels,
         library_data=joint_library,
+        layer_data=(),
         signal_length=JOINT_SIGNAL_LENGTH,
     ).matcher

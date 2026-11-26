@@ -386,7 +386,7 @@ class TestHearingAFrameOfALine(BaseTestSuite):
     @staticmethod
     def _profiles(method: SpectrumMethod, bins: int) -> FrameProfiles:
         config = Config(library=InstructionsLibraryConfig(spectrum_method=method))
-        return frame_profiles(config, Window.from_config(config), bins)
+        return frame_profiles(config, Window.from_config(config), (bins,))
 
     @staticmethod
     def _hearing(

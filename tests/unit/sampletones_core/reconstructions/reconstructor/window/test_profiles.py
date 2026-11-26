@@ -44,7 +44,7 @@ def _profiles(method: SpectrumMethod) -> FrameProfiles:
     config = _config(method)
     window = Window.from_config(config)
     bins = calculate_n_bins(config.library.sample_rate) if method == SpectrumMethod.CQT else WINDOWED_BINS
-    return frame_profiles(config, window, bins)
+    return frame_profiles(config, window, (bins,))
 
 
 def _window(positions: List[int], weights: List[float]) -> BinWindow:
@@ -242,7 +242,7 @@ class TestAHeldNoteAsTheFeatureReadsIt(BaseTestSuite):
 
         readings = self._readings(extractor, centered, sounding, frames)
 
-        profiles = frame_profiles(config, window, steady.shape[0])
+        profiles = frame_profiles(config, window, (steady.shape[0],))
         for frame in range(frames):
             shares = self._held_shares(profiles, bin_index, sounding, frame)
             assert readings[frame, bin_index] == pytest.approx(
@@ -328,3 +328,21 @@ class TestTheModelPlacesEachWaveletAsTheTransformDoes(BaseTestSuite):
 
         share = float(window.weights[on_frame[0]] / window.weights.sum())
         return ONE_SIDED_POWER * share**2
+
+
+class TestTheProfilesOfStackedMethods(BaseTestSuite):
+    """A frame read by several methods holds each method's bins, each read through its own method's window."""
+
+    def test_each_method_s_bins_keep_its_own_profiles(self) -> None:
+        layered = Config.model_validate(
+            {"generation": {"layers": [{"method": SpectrumMethod.LOG_SPACED_FFT.value, "weight": 1.0}]}}
+        )
+        own = calculate_n_bins(layered.library.sample_rate)
+
+        stacked = frame_profiles(layered, Window.from_config(layered), (own, WINDOWED_BINS))
+
+        constant_q, windowed = _profiles(SpectrumMethod.CQT), _profiles(SpectrumMethod.LOG_SPACED_FFT)
+        assert np.array_equal(stacked.own_amplitude[:own], constant_q.own_amplitude)
+        assert np.array_equal(stacked.own_amplitude[own:], windowed.own_amplitude)
+        assert np.array_equal(stacked.own_energy[own:], windowed.own_energy)
+        assert stacked.reach == max(constant_q.reach, windowed.reach)

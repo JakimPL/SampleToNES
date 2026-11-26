@@ -56,12 +56,25 @@ class CandidateProvider:
     candidate's power is read off its phase-averaged library feature once per library and kept
     per generator class, so every frame mixes the same rows. Its waveform and its moments are
     read where a shortlist asks for them.
+
+    A conversion reading its frames with several spectrum methods (``analysis_layers``) reads each
+    candidate in each method's library, so a candidate's power holds every method's bins stacked in
+    the order the frame's feature stacks them, the library's own method first. Its waveform and
+    moments are the library's own.
+
+    Attributes:
+        config: The conversion's configuration.
+        window: The analysis window of the library's own method.
+        library_data: The library of the library's own method.
+        extractor: The extractor of the library's own method, whose transform reads every bin.
+        layer_data: The library of each spectrum method the conversion adds, in the order it adds them.
     """
 
     config: Config
     window: Window
     library_data: InstructionLibraryData
     extractor: FeatureExtractor
+    layer_data: Tuple[InstructionLibraryData, ...]
 
     _cached_powers: CachedPowers = field(init=False)
     _moments: Dict[InstructionUnion, Tuple[float, float]] = field(init=False, default_factory=dict)
@@ -70,11 +83,20 @@ class CandidateProvider:
     def __post_init__(self) -> None:
         object.__setattr__(self, "_cached_powers", self._build_cached_powers())
 
+    @property
+    def libraries(self) -> Tuple[InstructionLibraryData, ...]:
+        """Every library a candidate is read in, the library's own method first."""
+        return (self.library_data, *self.layer_data)
+
+    @cached_property
+    def sizes(self) -> Tuple[int, ...]:
+        """How many bins each library's feature axis holds, in the order the frame's feature stacks them."""
+        return tuple(_axis(data).shape[0] - 1 for data in self.libraries)
+
     @cached_property
     def widths(self) -> np.ndarray:
-        """The width of every bin of the feature axis the library is described on."""
-        feature = next(iter(self.library_data.values())).feature
-        return np.asarray(np.diff(feature.edges), dtype=np.float64)
+        """The width of every bin of the feature axes the libraries are described on, stacked in order."""
+        return np.concatenate([np.diff(_axis(data)) for data in self.libraries])
 
     def candidates(self, generator_classes: Dict[GeneratorClassName, GeneratorUnion]) -> ClassCandidates:
         """Every candidate of ``generator_classes`` with the power its library sample plays at, gathered once."""
@@ -95,7 +117,9 @@ class CandidateProvider:
 
     def power_of(self, instruction: InstructionUnion) -> np.ndarray:
         """The candidate's power density per bin averaged over phase, as its library sample plays."""
-        values = np.asarray(self.library_data[instruction].feature.values, dtype=np.float64)
+        values = np.concatenate(
+            [np.asarray(data[instruction].feature.values, dtype=np.float64) for data in self.libraries]
+        )
         return np.asarray(self.extractor.transformer.backward(values / self.widths))
 
     def library_waveform(self, instruction: InstructionUnion) -> np.ndarray:
@@ -123,3 +147,8 @@ class CandidateProvider:
             return xp.asarray(np.stack(rows))
 
         return cached
+
+
+def _axis(library_data: InstructionLibraryData) -> np.ndarray:
+    """The bin edges of the feature axis a library describes its candidates on."""
+    return np.asarray(next(iter(library_data.values())).feature.edges, dtype=np.float64)

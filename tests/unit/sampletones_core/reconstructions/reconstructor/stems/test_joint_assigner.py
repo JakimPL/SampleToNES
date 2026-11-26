@@ -395,7 +395,7 @@ class TestAssigningBesideTheNeighbors(BaseTestSuite):
         """Assigns ``frame`` of ``played`` (``lines`` where unnamed) among neighbors decoded to play ``lines``."""
         fragments = extractor.extract(played_lines(config, lines if played is None else played, SEQUENCE_FRAMES))
         bins = len(fragments[frame].feature.values)
-        profiles = frame_profiles(config, window, bins)
+        profiles = frame_profiles(config, window, (bins,))
         silence = Contribution.silence(bins, config.library.frame_length)
         decoded = assigner.lines(decoded_lines(lines, assigner.channels, silence, SEQUENCE_FRAMES))
         heard = {channel_name: surroundings(line, frame, profiles) for channel_name, line in decoded.items()}
@@ -479,7 +479,7 @@ class TestAssigningBesideTheNeighbors(BaseTestSuite):
             decoded_lines(silent_lead, every_channel_assigner.channels, silence, SEQUENCE_FRAMES)
         )
         frame = BASS_FRAMES
-        profiles = frame_profiles(config, window, len(fragments[frame].feature.values))
+        profiles = frame_profiles(config, window, (len(fragments[frame].feature.values),))
         heard = {channel_name: surroundings(line, frame, profiles) for channel_name, line in lines.items()}
 
         assignment = every_channel_assigner.assign_beside(

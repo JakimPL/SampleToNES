@@ -4,6 +4,7 @@ from tqdm import tqdm
 
 from sampletones_core.configs import Config
 from sampletones_core.fft import Window
+from sampletones_core.fft.layers import analysis_layers
 from sampletones_core.library import (
     InstructionLibrary,
     InstructionLibraryData,
@@ -16,16 +17,28 @@ from sampletones_shared.logger import logger, null_logger
 
 
 def ensure_library(config: Config) -> None:
-    """Prepares the instruction library a conversion under ``config`` searches.
+    """Prepares every instruction library a conversion under ``config`` searches.
 
-    A library this build reads is used as it stands. A library built by another version is rebuilt
-    in its place, and a missing one is generated.
+    A conversion searches the library of its library's spectrum method, and the library of each
+    method ``generation.layers`` adds (``analysis_layers``). A library this build reads is used as it
+    stands. A library built by another version is rebuilt in its place, and a missing one is
+    generated.
 
     Args:
-        config: The configuration selecting the library.
+        config: The configuration selecting the libraries.
 
     Raises:
         KeyboardInterrupt: If the generation is interrupted, so the conversion stops with it.
+    """
+    for layer in analysis_layers(config):
+        _ensure_one_library(layer.config)
+
+
+def _ensure_one_library(config: Config) -> None:
+    """Prepares the library of ``config``'s spectrum method, as ``ensure_library`` does for each.
+
+    Raises:
+        KeyboardInterrupt: If the generation is interrupted.
     """
     window = Window.from_config(config)
     library = InstructionLibrary.from_config(config)

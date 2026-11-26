@@ -79,7 +79,7 @@ class _Pass:
         self.neighbor_pass = NeighborPass.over(
             assigner,
             decoded_lines(decoded, assigner.channels, silence, frames),
-            frame_profiles(config, window, bins),
+            frame_profiles(config, window, (bins,)),
             TransitionWeights.of(config),
             _inertia(inertia),
         )

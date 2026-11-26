@@ -5,7 +5,10 @@ from typing import Callable, Final, List
 import pytest
 
 from sampletones_core.configs import Config
+from sampletones_core.configs.generation import SpectrumLayer
+from sampletones_core.constants.enums import SpectrumMethod
 from sampletones_core.fft import Window
+from sampletones_core.fft.layers import analysis_layers
 from sampletones_core.headless import library as headless_library
 from sampletones_core.headless.library import ensure_library
 from sampletones_core.library import InstructionLibrary, InstructionLibraryData
@@ -69,3 +72,28 @@ class TestTheLibraryAHeadlessConversionPrepares(BaseTestSuite):
         ensure_library(config)
 
         assert generated == ([config] if test_case.expected else [])
+
+
+class TestEveryLayersLibrary(BaseTestSuite):
+    """A conversion reading several spectrum methods prepares each method's library."""
+
+    def test_each_missing_library_of_a_layered_conversion_is_generated(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        generated: List[Config] = []
+        monkeypatch.setattr(headless_library, "generate_library", generated.append)
+        rooted = _config_in(tmp_path)
+        config = rooted.model_copy(
+            update={
+                "generation": rooted.generation.model_copy(
+                    update={"layers": (SpectrumLayer(method=SpectrumMethod.LOG_SPACED_FFT, weight=1.0),)}
+                )
+            }
+        )
+        _write_current(analysis_layers(config)[0].config)
+
+        ensure_library(config)
+
+        assert [generated_config.library.spectrum_method for generated_config in generated] == [
+            SpectrumMethod.LOG_SPACED_FFT
+        ]

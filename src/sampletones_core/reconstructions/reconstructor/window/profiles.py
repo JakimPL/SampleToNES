@@ -12,6 +12,7 @@ from sampletones_core.fft.cqt.frequencies import calculate_cqt_frequencies
 from sampletones_core.fft.cqt.geometry import calculate_wavelet_lengths
 from sampletones_core.fft.cqt.kernel import window_envelope
 from sampletones_core.fft.cqt.transform import FRAMES_WINDOW, wavelet_positions
+from sampletones_core.fft.layers import analysis_layers
 
 CACHED_PROFILES: Final[int] = 4
 
@@ -114,40 +115,55 @@ class FrameProfiles:
         return np.asarray(self.energy[self.reach + offset])
 
 
-def frame_profiles(config: Config, window: Window, bins: int) -> FrameProfiles:
-    """The frame profiles of the feature ``config`` analyzes with.
+def frame_profiles(config: Config, window: Window, sizes: Sequence[int]) -> FrameProfiles:
+    """The frame profiles of the feature ``config`` analyzes with, every analysis layer's bins in order.
 
     The constant-Q feature reads each bin through a wavelet of its own length, standing where the
     transform places it around the middle of the frame. The windowed features read every bin through
-    one tapered window starting where ``window`` places it.
+    one tapered window starting where the layer's window places it. A frame read by several spectrum
+    methods stacks their bins (``analysis_layers``), so its profiles stack each method's.
 
     Args:
-        config: The configuration whose spectrum method the frames are read with.
-        window: The analysis window, which sets the frame length and the windowed features' envelope.
-        bins: How many bins a frame's feature holds.
+        config: The configuration whose spectrum methods the frames are read with.
+        window: The analysis window of the library's own method, which sets the frame length.
+        sizes: How many bins each analysis layer's reading holds, in the order the frame's feature
+            stacks them.
 
     Returns:
         The profiles of every bin.
     """
+    layers = analysis_layers(config)
+    windows = (window, *(layer.window for layer in layers[1:]))
+    return FrameProfiles.of(
+        [
+            bin_window
+            for layer, layer_window, bins in zip(layers, windows, sizes, strict=True)
+            for bin_window in _layer_windows(layer.config, layer_window, bins)
+        ]
+    )
+
+
+def _layer_windows(config: Config, window: Window, bins: int) -> Tuple[BinWindow, ...]:
+    """Each bin's window over the frames, for the bins one spectrum method reads."""
     method = config.library.spectrum_method
     match method:
         case SpectrumMethod.CQT:
-            return _constant_q_profiles(config.library.sample_rate, window.frame_length, bins)
+            return _constant_q_windows(config.library.sample_rate, window.frame_length, bins)
         case SpectrumMethod.FFT | SpectrumMethod.LOG_SPACED_FFT:
             envelope = tuple(float(weight) for weight in window.envelope)
-            return _windowed_profiles(envelope, window.left_offset, window.frame_length, bins)
+            return (_tapered_window(envelope, window.left_offset, window.frame_length),) * bins
         case _:
             assert_never(method)
 
 
 @lru_cache(maxsize=CACHED_PROFILES)
-def _constant_q_profiles(sample_rate: int, frame_length: int, bins: int) -> FrameProfiles:
-    """Each bin's wavelet weighed over the frames, on the bins the constant-Q feature reads.
+def _constant_q_windows(sample_rate: int, frame_length: int, bins: int) -> Tuple[BinWindow, ...]:
+    """Each bin's wavelet over the frames, on the bins the constant-Q feature reads.
 
-    The profiles depend on the configuration alone, so a process builds them once for each
+    The wavelets depend on the configuration alone, so a process lays them once for each
     configuration it converts with.
     """
-    return FrameProfiles.of(constant_q_windows(sample_rate, frame_length, bins))
+    return tuple(constant_q_windows(sample_rate, frame_length, bins))
 
 
 def constant_q_windows(sample_rate: int, frame_length: int, bins: int) -> List[BinWindow]:
@@ -174,12 +190,11 @@ def _wavelet(length: int, kernel_length: int, frame_length: int) -> BinWindow:
 
 
 @lru_cache(maxsize=CACHED_PROFILES)
-def _windowed_profiles(envelope: Tuple[float, ...], left_offset: int, frame_length: int, bins: int) -> FrameProfiles:
-    """One tapered window weighed over the frames, shared by every bin.
+def _tapered_window(envelope: Tuple[float, ...], left_offset: int, frame_length: int) -> BinWindow:
+    """The one tapered window every bin of a windowed feature reads through.
 
     The window's ``envelope`` arrives as a tuple so the cache can key on it. Its first sample lies
     ``left_offset`` samples from the frame's start.
     """
     weights = np.asarray(envelope, dtype=np.float64)
-    tapered = BinWindow.placed(left_offset + np.arange(weights.shape[0]), weights, frame_length)
-    return FrameProfiles.of([tapered] * bins)
+    return BinWindow.placed(left_offset + np.arange(weights.shape[0]), weights, frame_length)

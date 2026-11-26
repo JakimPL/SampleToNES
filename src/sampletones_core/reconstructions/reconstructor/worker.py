@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict
+from typing import Dict, Tuple
 
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName
@@ -23,13 +23,16 @@ class ReconstructorWorker:
     Everything a reconstruction run needs beyond its target sits here, built once for the
     signal it will work on: the scorer and candidate provider the matching draws from, the
     phase aligner and feature extractor it measures with, the `FrameMatcher` the stems
-    assignment scores through, and the `Decoder` the configuration names.
+    assignment scores through, and the `Decoder` the configuration names. A conversion reading its
+    frames with several spectrum methods hands the library of each method it adds
+    (``layer_data``), which the candidate provider stacks beside the library's own.
     """
 
     config: Config
     window: Window
     channels: Dict[ChannelName, GeneratorUnion]
     library_data: InstructionLibraryData
+    layer_data: Tuple[InstructionLibraryData, ...]
     signal_length: int
 
     scorer: Scorer = field(init=False)
@@ -42,7 +45,13 @@ class ReconstructorWorker:
     def __post_init__(self) -> None:
         scorer = Scorer(self.config, self.window, self.signal_length)
         feature_extractor = get_feature_extractor(self.config, self.window)
-        candidate_provider = CandidateProvider(self.config, self.window, self.library_data, feature_extractor)
+        candidate_provider = CandidateProvider(
+            config=self.config,
+            window=self.window,
+            library_data=self.library_data,
+            extractor=feature_extractor,
+            layer_data=self.layer_data,
+        )
         phase_aligner_class = PHASE_ALIGNERS[self.config.generation.calculation.phase_aligner]
         phase_aligner = phase_aligner_class(self.config, self.window, self.library_data)
         matcher = FrameMatcher(

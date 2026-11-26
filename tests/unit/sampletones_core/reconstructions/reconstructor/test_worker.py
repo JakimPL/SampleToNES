@@ -25,6 +25,7 @@ def _worker_with_selector(
         window=window,
         channels=channels,
         library_data=library_data,
+        layer_data=(),
         signal_length=config.library.frame_length,
     )
 

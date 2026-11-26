@@ -118,6 +118,14 @@ sharper frequency resolution requires a longer time window, and vice versa):
   with the FFT path's frame centers. Each column centers on the middle of its frame, and
   the first columns read the audio from its first sample, with silence before it.
 
+A conversion may read every frame with more than one method (`generation.layers`): the
+library's own method and each method a layer adds, such as `cqt` for the low notes and `logfft`
+for when they change. The frame's feature then holds every method's bins one after another, and a
+candidate's feature holds the same bins, each method's read from that method's library. Every step
+of the search reads a frame bin by bin, so it reads the stacked feature as it reads one method's.
+Each method's bins hold its layer's share of the criterion's weight, spread over them as the method
+weighs them alone, and the window model reads each bin through its own method's window.
+
 The target and the library candidates are always described by the *same* method, so
 their features are directly comparable bin by bin. All three methods share one scale
 convention: a bin-centered tone of amplitude `A` contributes `A²/2` — its mean-square

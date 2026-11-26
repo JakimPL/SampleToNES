@@ -1,7 +1,6 @@
 from typing import Any, Dict, Mapping, Tuple
 
 import pytest
-from pydantic import BaseModel
 
 from sampletones_core.configs.defaults import GENERATION_DEFAULTS_PATH, generation_default
 from sampletones_core.configs.generation import GenerationConfig
@@ -14,16 +13,13 @@ def _shipped() -> Mapping[str, Any]:
     return values
 
 
-def _settings(model: BaseModel, *path: str) -> Dict[Tuple[str, ...], Any]:
-    """Every value the model holds, keyed by the path of names reaching it."""
-    held: Dict[Tuple[str, ...], Any] = {}
-    for name, value in model:
-        if isinstance(value, BaseModel):
-            held.update(_settings(value, *path, name))
-        else:
-            held[(*path, name)] = value
+def _settings() -> Dict[Tuple[str, ...], Any]:
+    """Every value the default settings hold, written as the file writes it, keyed by the path of names reaching it.
 
-    return held
+    The file is YAML, which writes a tuple as a list and an enumeration by its value, so the
+    settings are read in the form they serialize to.
+    """
+    return _stated(GenerationConfig().model_dump(mode="json"))
 
 
 def _stated(values: Mapping[str, Any], *path: str) -> Dict[Tuple[str, ...], Any]:
@@ -42,11 +38,11 @@ class TestTheFileStatesTheMatchingDefaults:
     """The packaged `generation.yaml` is where a matching default is written, and the only place."""
 
     def test_every_setting_starts_at_the_value_the_file_states(self) -> None:
-        for path, value in _settings(GenerationConfig()).items():
+        for path, value in _settings().items():
             assert value == generation_default(*path)
 
     def test_every_value_the_file_states_names_a_setting(self) -> None:
-        assert set(_stated(_shipped())) == set(_settings(GenerationConfig()))
+        assert set(_stated(_shipped())) == set(_settings())
 
 
 class TestReadingOneDefault:

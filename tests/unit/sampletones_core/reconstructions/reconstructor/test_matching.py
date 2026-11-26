@@ -67,6 +67,7 @@ def _searching(
         window=window,
         channels=channels,
         library_data=library_data,
+        layer_data=(),
         signal_length=WORKER_SIGNAL_LENGTH,
     )
 
@@ -92,6 +93,7 @@ def _rebuilt(worker: ReconstructorWorker, generation: GenerationConfig) -> Recon
         window=worker.window,
         channels=worker.channels,
         library_data=worker.library_data,
+        layer_data=(),
         signal_length=WORKER_SIGNAL_LENGTH,
     )
 
@@ -247,6 +249,7 @@ class TestScoreColumn:
             window=window,
             channels=channels,
             library_data=library_data,
+            layer_data=(),
             signal_length=WORKER_SIGNAL_LENGTH,
         )
         for generator in _kinds(worker):
@@ -317,6 +320,7 @@ class TestScoreColumn:
             window=window,
             channels={ChannelName.PULSE1: pulse},
             library_data=InstructionLibraryData.create(config, data),
+            layer_data=(),
             signal_length=WORKER_SIGNAL_LENGTH,
         )
 
@@ -479,6 +483,7 @@ def mute_worker_fixture(
         window=window,
         channels={ChannelName.PULSE1: generator},
         library_data=InstructionLibraryData.create(config, data),
+        layer_data=(),
         signal_length=WORKER_SIGNAL_LENGTH,
     )
 
@@ -651,6 +656,7 @@ def ladder_worker(
         window=window,
         channels={ChannelName.PULSE1: generator},
         library_data=InstructionLibraryData.create(config, data),
+        layer_data=(),
         signal_length=WORKER_SIGNAL_LENGTH,
     )
 
