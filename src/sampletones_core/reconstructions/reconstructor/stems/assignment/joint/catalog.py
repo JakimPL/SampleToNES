@@ -96,16 +96,17 @@ class UnitRow:
 class KindCatalog:
     """One kind of channel's library rows, each read as the note, the timbre and the volume it sounds.
 
-    The catalog holds each row's library power, read at unit drive. A row's feature values belong to
-    the row played on a channel, at the drive the stem gives the channel, so they are read where a
-    frame hears the row (``FrameHearing``, ``DrivenFeatures``). The rows of one note in one timbre
-    differ in volume alone, so the search moves along a note's rows to change its level or its timbre.
+    The catalog holds each row's library power, as the library sample plays it. A row's feature
+    values belong to the row played on a channel, at the drive the stem gives the channel, so they
+    are read where a frame hears the row (``FrameHearing``, ``DrivenFeatures``). The rows of one note
+    in one timbre differ in volume alone, so the search moves along a note's rows to change its level
+    or its timbre.
 
     Attributes:
         kind: The generator class the rows belong to.
         generator: A generator of the class, which answers its silent instruction.
         instructions: The rows, in the order the candidate provider holds them.
-        powers: Each row's power density per bin, at unit drive.
+        powers: Each row's power density per bin, as the library sample plays it.
         notes: Each row's note, ``SILENT_NOTE`` for the silent row.
         timbres: Each row's timbre within its note.
         volumes: Each row's volume; the triangle's one level reads as full volume.

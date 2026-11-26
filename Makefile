@@ -28,7 +28,7 @@ help:
 	@echo $(Q)  make test-docs   - Run the doctests$(Q)
 	@echo $(Q)  make benchmarks  - Run the measured-duration suite$(Q)
 	@echo $(Q)  make screens     - Run the screen scenarios: the application driven on a virtual display (needs Xvfb)$(Q)
-	@echo $(Q)  make check       - Run pre-commit on every file, the doctests, the suite and the screen scenarios, and mark the commit they passed on for a push (needs Xvfb)$(Q)
+	@echo $(Q)  make check       - Run pre-commit on every file, the doctests, the suite and the screen scenarios, and mark the commit they passed on for a push (needs Xvfb; ARGS="--workers 2 --screen-workers 1" lowers the load)$(Q)
 	@echo $(Q)  make calibration - Measure reconstruction on the reference sounds; writes the renders and a report$(Q)
 	@echo $(Q)  make tracker-playback BITPHASE=folder FAMITRACKER=FamiTracker.exe [PROJECT=song.stp] - Play exported projects (the corpus by default) in Bitphase, FamiTracker or both; reports every tick that differs from the app$(Q)
 	@echo $(Q)  make icons       - Write the application icon suite from the mark into the package$(Q)
@@ -102,7 +102,7 @@ screens:
 	$(PYTHON) scripts/run_tests.py screens
 
 check:
-	$(PYTHON) scripts/check.py
+	$(PYTHON) scripts/check.py $(ARGS)
 
 lint:
 	$(PYTHON) scripts/lint.py $(ARGS)

@@ -11,7 +11,7 @@ from sampletones_shared.array import to_numpy, xp
 
 from .candidates import CandidateProvider, ClassCandidates
 from .contribution import Contribution
-from .drive import driven_powers
+from .drive import driven_amplitudes, driven_powers, driven_variance
 from .mix import FrameMix
 from .phase import PhaseAligner
 from .scorer import Scorer
@@ -71,8 +71,9 @@ class FrameMatcher:
     scoring and the per-candidate contribution build. What the scoring produces is a column of
     alternatives on one scale, the channel's silence among them, which the assignment turns into
     ownership and the decoder into a stream. A drive lifts what a channel reaches for: every
-    candidate is read at unit drive, so the row fitting the target is the one sounding it at the
-    drive, and a channel is answered at the level its own recording is given.
+    candidate is read at the channel's drive (``driven_powers``, ``driven_amplitudes``), so the row
+    fitting the target is the one sounding it louder by the drive, and a channel is answered at the
+    level its own recording is given.
 
     A search settling its own shortlist hands the rows it kept (``score_rows``), and the rows of
     several channels are scored in one pass of the criterion (``score_requests``), each request
@@ -100,8 +101,8 @@ class FrameMatcher:
         """
         Score one generator class's candidates in two stages, each added to ``mix``.
 
-        Every candidate is read at unit drive: its waveform divides by the drive and its power
-        by the drive's square, so a rising drive reaches for a louder row and settles on the
+        Every candidate is read at the channel's drive: its waveform divides by the drive and its
+        power by the drive's square, so a rising drive reaches for a louder row and settles on the
         loudest the class holds. Each candidate's power is added to the mix and the result
         ranked by the spectral term, which compares phase-averaged powers and is therefore
         immune to how the waveforms happen to be phased. The ``top_k`` best and the class's silent instruction
@@ -225,9 +226,9 @@ class FrameMatcher:
         Args:
             instruction: The candidate.
             residual: What the frame's waveform holds beyond the stem's other picks.
-            power: The candidate's power density per bin, read at unit drive.
+            power: The candidate's power density per bin, read at the channel's drive.
             drive: The level the channel reaches for, which the candidate's waveform and mean
-                level divide by, and its variance the drive's square.
+                level are read at (``driven_amplitudes``), and its variance (``driven_variance``).
 
         Returns:
             Contribution: The candidate's power, expected waveform and variance.
@@ -240,15 +241,15 @@ class FrameMatcher:
             mean, variance = self.candidate_provider.expected_moments(instruction)
             return Contribution(
                 power=power,
-                expectation=np.full(residual.shape[0], mean / drive),
-                variance=variance / drive**2,
+                expectation=driven_amplitudes(np.full(residual.shape[0], mean), drive),
+                variance=driven_variance(variance, drive),
                 sounding=instruction.on,
             )
 
         if self.config.generation.calculation.find_best_phase:
             waveform = self.phase_aligner.align(residual, instruction, drive)
         else:
-            waveform = self.candidate_provider.library_waveform(instruction) / drive
+            waveform = driven_amplitudes(self.candidate_provider.library_waveform(instruction), drive)
 
         return Contribution(power=power, expectation=waveform, variance=0.0, sounding=instruction.on)
 

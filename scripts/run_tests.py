@@ -91,8 +91,8 @@ def run_environment(base: Dict[str, str], *, shard: Optional[str]) -> Dict[str, 
     return environment
 
 
-def main(argv: Sequence[str]) -> int:
-    """Runs one pass of the tests and exits with the status pytest gave it."""
+def argument_parser() -> argparse.ArgumentParser:
+    """The test runner's command line: the pass to run, its worker counts and its shard."""
     parser = argparse.ArgumentParser(description="Run one pass of the SampleToNES tests.")
     parser.add_argument(
         "name",
@@ -114,7 +114,12 @@ def main(argv: Sequence[str]) -> int:
         default=None,
         help="the part of the screen scenarios this run takes, as INDEX/COUNT, when a run spreads them over machines",
     )
-    arguments = parser.parse_args(list(argv))
+    return parser
+
+
+def main(argv: Sequence[str]) -> int:
+    """Runs one pass of the tests and exits with the status pytest gave it."""
+    arguments = argument_parser().parse_args(list(argv))
 
     return run_pass(
         planned_passes(arguments.workers, arguments.screen_workers)[arguments.name],

@@ -15,7 +15,9 @@ check = load_script("check.py")
 run_tests = load_script("run_tests.py")
 
 PYTHON: Final[str] = "/usr/bin/python3"
-CHECKS = check.planned_checks(PYTHON)
+CHECKS = check.planned_checks(PYTHON, ())
+FEWER_WORKERS: Final[str] = "2"
+ONE_SCREEN_WORKER: Final[str] = "1"
 FAILING_SUITE: Final[str] = f"{RUN_TESTS_SCRIPT} {check.SUITE}"
 
 
@@ -57,6 +59,25 @@ class TestPlannedChecks:
         planned = run_tests.planned_passes(run_tests.DEFAULT_WORKERS, run_tests.SCREEN_WORKERS)
 
         assert {current.name for current in CHECKS[1:]} <= set(planned)
+
+    def test_worker_counts_given_to_the_check_reach_every_test_pass(self) -> None:
+        options = check.worker_options(FEWER_WORKERS, ONE_SCREEN_WORKER)
+
+        tests = check.planned_checks(PYTHON, options)[1:]
+
+        assert options == (check.WORKERS_OPTION, FEWER_WORKERS, check.SCREEN_WORKERS_OPTION, ONE_SCREEN_WORKER)
+        assert all(current.command == (PYTHON, RUN_TESTS_SCRIPT, current.name, *options) for current in tests)
+
+    def test_a_worker_count_left_out_keeps_the_test_runner_s_default(self) -> None:
+        assert check.worker_options(None, None) == ()
+        assert check.worker_options(None, ONE_SCREEN_WORKER) == (check.SCREEN_WORKERS_OPTION, ONE_SCREEN_WORKER)
+
+    def test_the_test_runner_reads_the_worker_counts_the_check_forwards(self) -> None:
+        options = check.worker_options(FEWER_WORKERS, ONE_SCREEN_WORKER)
+
+        arguments = run_tests.argument_parser().parse_args([check.SUITE, *options])
+
+        assert (arguments.workers, arguments.screen_workers) == (FEWER_WORKERS, ONE_SCREEN_WORKER)
 
 
 class TestCheckCommit:

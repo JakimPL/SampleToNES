@@ -12,7 +12,7 @@ from .batches import cheapest_row, split_by_group
 from .catalog import KindCatalog
 from .choice import ScoredCombination
 from .hearing import FrameHearing
-from .layout import StemLayout
+from .layout import ChannelGroup, StemLayout
 
 VOLUME_NEIGHBORS: Final[int] = 4
 SILENCE_ROOM: Final[int] = 1
@@ -29,7 +29,7 @@ class ChannelDraft:
         place: The channel's place in the layout.
         options: What the choice plays on the channel, then the nearest volumes of its note.
         mix: What the stem's other channels sound in the frame, playing the choice.
-        notes: The proposed notes of the channel's kind that no channel of that kind plays in the
+        notes: The proposed notes of the channel's kind that no channel of its group plays in the
             choice, in proposal order.
     """
 
@@ -47,8 +47,10 @@ class ChannelColumns:
 
     - what the choice plays on the channel, and for a sounding pulse or noise its ``VOLUME_NEIGHBORS``
       nearest volumes of the same note and timbre;
-    - the best row of every proposed note of the channel's kind that no channel of that kind plays in
-      the choice, by the spectral cost of the frame with the others sounding, cheapest first;
+    - the best row of every proposed note of the channel's kind that no channel of its group plays in
+      the choice, by the spectral cost of the frame with the others sounding, cheapest first. A channel
+      of the group stands in for the one playing the note, so the move would play the choice again in
+      another order; a channel of another group sounds the note at its own level, a sound of its own;
     - cut to leave ``SILENCE_ROOM`` of the ``width`` the decoder reads, keeping at least
       ``LEAST_KEPT``, then the channel's silence where the cut left it out.
 
@@ -138,20 +140,18 @@ class ChannelColumns:
     def _untaken_notes(
         self, index: int, winner: ScoredCombination, proposals: Mapping[GeneratorClassName, Sequence[int]]
     ) -> List[int]:
-        """The notes proposed for the channel's kind that no channel of the kind plays in ``winner``, each once."""
-        kind = self.layout.slots[index].kind
-        catalog = self.catalogs[kind]
-        taken = self._taken_notes(kind, winner)
-        proposed = (int(catalog.notes[row]) for row in proposals.get(kind, ()))
+        """The notes proposed for the channel's kind that no channel of its group plays in ``winner``, each once."""
+        group = self.layout.group_of(index)
+        catalog = self.catalogs[group.kind]
+        taken = self._taken_notes(group, winner)
+        proposed = (int(catalog.notes[row]) for row in proposals.get(group.kind, ()))
         return list(dict.fromkeys(note for note in proposed if note not in taken))
 
-    def _taken_notes(self, kind: GeneratorClassName, winner: ScoredCombination) -> Set[int]:
-        """The notes ``winner`` sounds on the stem's channels of ``kind``."""
-        catalog = self.catalogs[kind]
+    def _taken_notes(self, group: ChannelGroup, winner: ScoredCombination) -> Set[int]:
+        """The notes ``winner`` sounds on the channels of ``group``."""
+        catalog = self.catalogs[group.kind]
         return {
-            int(catalog.notes[row])
-            for slot, row in zip(self.layout.slots, winner.rows)
-            if slot.kind == kind and catalog.sounding(row)
+            int(catalog.notes[winner.rows[place]]) for place in group.places if catalog.sounding(winner.rows[place])
         }
 
     def _alternates(self, drafts: Sequence[ChannelDraft]) -> List[List[int]]:
