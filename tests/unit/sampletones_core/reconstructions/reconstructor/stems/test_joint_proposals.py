@@ -202,6 +202,28 @@ def _first_notes(catalog: KindCatalog, rows: List[int]) -> List[int]:
     return list(_first_rows(catalog, rows))
 
 
+def _held_lead(
+    layout: StemLayout, pulses: Dict[GeneratorClassName, KindCatalog], provider: CandidateProvider
+) -> SequenceHearing:
+    """A frame whose second pulse holds the lead up to it, the frame's own share of every bin's window a half.
+
+    The held note reaches every bin at half the lead's amplitude, and the first pulse holds nothing.
+    """
+    lead_row = pulses[PULSE].rows_by_instruction[LEAD]
+    amplitude = np.sqrt(pulses[PULSE].powers[lead_row])
+    bins = amplitude.shape[0]
+    held = HeldNote(
+        key=pulses[PULSE].key(lead_row), frames=range(0, 1), amplitude=HALF * amplitude, share=np.full(bins, HALF)
+    )
+    surroundings = [
+        TonalSurroundings(
+            leak=np.zeros(bins), before=HeldNote.silence(bins), after=HeldNote.silence(bins), own=np.full(bins, HALF)
+        ),
+        TonalSurroundings(leak=held.power, before=held, after=HeldNote.silence(bins), own=np.full(bins, HALF)),
+    ]
+    return SequenceHearing.of(layout, pulses, surroundings, provider)
+
+
 class TestTheNoteDictionary(BaseTestSuite):
     """One atom per note and timbre: the note's unit row, heard on its channel as the frame hears it.
 
@@ -270,6 +292,43 @@ class TestTheNoteDictionary(BaseTestSuite):
             assert atoms.caps[atom] * atoms.features[atom] == pytest.approx(
                 _features(provider, loudest / LOUDER_DRIVE**2)
             )
+
+    def test_an_atom_among_the_frame_s_neighbors_adds_what_the_window_hears_of_its_unit_row(
+        self, every_pulse: StemLayout, catalogs: Dict[GeneratorClassName, KindCatalog], joint_matcher: FrameMatcher
+    ) -> None:
+        """Each atom is read where the frame hears its note, its features and power those of what it adds there."""
+        pulses = {PULSE: catalogs[PULSE]}
+        hearing = _held_lead(every_pulse, pulses, joint_matcher.candidate_provider)
+        dictionary = NoteDictionary.of(every_pulse, pulses)
+
+        atoms = dictionary.heard(hearing)
+
+        for atom, row in enumerate(int(row) for row in dictionary.rows):
+            place = hearing.place_of(PULSE, row)
+            assert atoms.features[atom] == pytest.approx(hearing.unit_features(place, [row])[0])
+            assert atoms.powers[atom] == pytest.approx(hearing.unit_powers(place, [row])[0].sum())
+
+    def test_a_held_note_s_atom_adds_its_whole_less_the_part_its_neighbor_leaves(
+        self, every_pulse: StemLayout, catalogs: Dict[GeneratorClassName, KindCatalog], joint_matcher: FrameMatcher
+    ) -> None:
+        """Joined to the lead held at half amplitude, the lead's own timbre restores its whole power, of which the
+        leak holds a quarter whatever the frame plays, so the atom adds three quarters. The lead's other timbres
+        join nothing and add the frame's own quarter.
+        """
+        pulses = {PULSE: catalogs[PULSE]}
+        hearing = _held_lead(every_pulse, pulses, joint_matcher.candidate_provider)
+        dictionary = NoteDictionary.of(every_pulse, pulses)
+
+        atoms = dictionary.heard(hearing)
+
+        for atom, row in enumerate(int(row) for row in dictionary.rows):
+            if pulses[PULSE].notes[row] != LEAD.pitch:
+                continue
+
+            whole = pulses[PULSE].powers[row].sum()
+            joined = pulses[PULSE].timbres[row] == LEAD.duty_cycle
+            expected = (1.0 - HALF**2) * whole if joined else HALF**2 * whole
+            assert atoms.powers[atom] == pytest.approx(expected)
 
     def test_a_note_s_strength_is_its_atoms_fitted_power_over_every_timbre(
         self, every_channel: StemLayout, catalogs: Dict[GeneratorClassName, KindCatalog], joint_matcher: FrameMatcher
@@ -471,19 +530,7 @@ class TestProposedRows(BaseTestSuite):
         note's leak, and a far quieter one would fit.
         """
         pulses = {PULSE: catalogs[PULSE]}
-        lead_row = catalogs[PULSE].rows_by_instruction[LEAD]
-        amplitude = np.sqrt(catalogs[PULSE].powers[lead_row])
-        bins = amplitude.shape[0]
-        held = HeldNote(
-            key=catalogs[PULSE].key(lead_row), frames=range(0, 1), amplitude=HALF * amplitude, share=np.full(bins, HALF)
-        )
-        surroundings = [
-            TonalSurroundings(
-                leak=np.zeros(bins), before=HeldNote.silence(bins), after=HeldNote.silence(bins), own=np.ones(bins)
-            ),
-            TonalSurroundings(leak=held.power, before=held, after=HeldNote.silence(bins), own=np.full(bins, HALF)),
-        ]
-        hearing = SequenceHearing.of(every_pulse, pulses, surroundings, joint_matcher.candidate_provider)
+        hearing = _held_lead(every_pulse, pulses, joint_matcher.candidate_provider)
 
         proposed = proposed_rows(
             lead,

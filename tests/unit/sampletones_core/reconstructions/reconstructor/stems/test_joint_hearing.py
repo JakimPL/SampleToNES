@@ -156,7 +156,6 @@ class TestAFrameHeardAlone(BaseTestSuite):
         assert np.array_equal(
             hearing.powers(place, rows), catalogs[PULSE].powers[rows] / pulses.slots[place].drive ** 2
         )
-        assert np.array_equal(hearing.steady_powers(place, rows), hearing.powers(place, rows))
 
     @pytest.mark.parametrize("place", [0, 1], ids=["first", "second"])
     def test_a_fit_reads_a_row_in_the_feature_values_of_its_power(
@@ -296,7 +295,6 @@ class TestAFrameHeardAmongItsNeighbors(BaseTestSuite):
         hearing = SequenceHearing.of(pulses, catalogs, around, provider)
         library = catalog.powers[rows] / pulses.slots[place].drive ** 2
 
-        assert np.array_equal(hearing.steady_powers(place, rows), library)
         assert hearing.powers(place, rows) == pytest.approx(around[place].heard(keys, library))
         assert hearing.unit_powers(place, rows) == pytest.approx(around[place].gains(keys) * library)
         assert hearing.unit_features(place, rows) == pytest.approx(

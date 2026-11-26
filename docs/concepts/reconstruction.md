@@ -326,9 +326,9 @@ on a channel: the channel's [drive](../glossary.md#drive) scales what the row ad
 neighbors hears the row through its analysis window ([section 5.6](#56-hearing-a-frame-among-its-neighbors)).
 The library holds each row's power, and the frame's hearing is the one reader that turns a row into what
 the frame hears. So the first fit hears each note on the channel its proposal would sound on, and lets it
-reach what every channel of its kind plays at full volume. A note's strength is the power its level sounds
-heard alone. The full criterion phases the channels by how loud each plays its row heard alone at its
-drive.
+reach what every channel of its kind plays at full volume. A note's strength is the power its level adds
+to the frame's reading. The full criterion phases the channels by how loud each plays its row heard alone
+at its drive.
 
 Where the source drives its two pulses alike, they go to the channels that keep each nearest the note it
 played a frame before, so a held line stays on its channel. Every source is solved on its own channels,
@@ -420,11 +420,13 @@ it. What the neighbors play is a fixed part of every mix the frame's assignment 
 row the frame plays adds its own share of its power. A row sounding the note held up to the frame, or
 the note held from it, extends that note, and the two add in amplitude. A note held through the frame
 then reaches it as a note heard alone does, and a note that stopped two frames before is heard as its
-frames' tail. The joint assignment's second and third steps read the frame this way: the fit of every
-combination reads a fitted level at the level of the note it extends, and the full criterion scores each
-combination with the leak in its mix. Its first step, the fit of every note, stands over the leak and hears
-each note alone, as a note held through the whole window. That fit weighs every note of the frame at once,
-and the window model reads a note cut at a frame boundary only approximately.
+frames' tail. Every step of the joint assignment reads the frame this way. The fit of every note and the
+fit of every combination stand over the leak and read a fitted level at the level of the note it extends,
+and the full criterion scores each combination with the leak in its mix. A note's strength is what its
+fitted level adds to the reading: a note of the frame's own adds its own share of the window, and a note
+extending a held one adds what joining it adds. The leak's part of a held note stays in the reading
+whatever the frame plays, so the strength leaves it out, and the frame's own evidence ranks the notes it
+proposes.
 
 A low bin's window averages a channel over many frames, so a channel switched on and off from frame to
 frame reads there as a level between the two: a triangle quieter than its one volume, or a noise quieter
