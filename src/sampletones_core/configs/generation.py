@@ -179,6 +179,15 @@ class SpectrumLayer(DataModel):
     weight: float = Field(gt=0.0)
 
 
+def shipped_layers() -> Tuple[SpectrumLayer, ...]:
+    """The spectrum layers a conversion reads by default, as the field holds them.
+
+    A document written before the layers existed takes this default as it loads, so it is the
+    tuple of layers itself and every render key over its configuration hashes.
+    """
+    return tuple(SpectrumLayer.model_validate(layer) for layer in generation_default("layers"))
+
+
 class GenerationConfig(DataModel):
     """How a conversion chooses what every channel plays.
 
@@ -197,7 +206,7 @@ class GenerationConfig(DataModel):
     assignment: AssignmentConfig = Field(default_factory=AssignmentConfig)
     decoder: DecoderConfig = Field(default_factory=DecoderConfig)
     refinement: RefinementConfig = Field(default_factory=RefinementConfig)
-    layers: Tuple[SpectrumLayer, ...] = Field(default=generation_default("layers"))
+    layers: Tuple[SpectrumLayer, ...] = Field(default_factory=shipped_layers)
 
     @model_validator(mode="after")
     def _check_decoder_reads_the_assignment(self) -> Self:
