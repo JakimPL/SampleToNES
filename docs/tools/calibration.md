@@ -56,6 +56,7 @@ listening page.
 | `run.json` | what the run measures, which `--resume` checks before it goes on, and the order of its variants, which the page's columns follow |
 | `renders/<variant>/` | a JSON file per reconstruction with its scores and the frames each channel plays, and a FLAC file of each listed one |
 | `renders/<variant>/<sound>/` | each listed reconstruction cut by channel, one file per combination |
+| `renders/oracle/` | the [oracle](#the-oracle) of each sound written as NES frames, as the variants' renders are |
 | `recordings/` | each reference sound, as the run prepared it for reconstruction: at the library's sample rate and the level the conversion matched |
 | `recordings/true/` | each reference sound as a run with `--levels true` prepared it, at the level its file holds |
 | `corpus/` | the reference sounds as generated |
@@ -98,8 +99,8 @@ Each cell has:
   reconstruction plays that channel, and empty where that channel is unused. Each channel keeps the same
   place in every cell of a family, so you can compare a row across its columns.
 
-The last column shows the change from the first column to the last. A rise means the last variant is
-closer to the recording.
+The last column shows the change from the first variant's column to the last. A rise means the last
+variant is closer to the recording.
 
 Every column starts closed. Click a column's heading to open it in every card of the tab. Click it again
 to close it. An open column adds a bar beside each square, showing the frames where that channel plays.
@@ -127,6 +128,26 @@ Beside each render, a JSON file of the same name has:
 - `timelines`: one character per frame for each channel, `1` where that channel plays.
 
 A render that scores worse than silence is a sign to listen before trusting the number.
+
+### The oracle
+
+A sound written as NES frames shows the **oracle** first, in its own column. The oracle plays the
+sound's frames exactly, every note, volume and duty cycle right. It can still score above zero,
+because of the noise. The noise channel plays a random sequence, and every frame's period and mode
+move it along, so a conversion that misses one noise frame plays another stretch of the sequence from
+then on: the same hiss in kind, but not the recording's. The pulses and the triangle start where the
+recording's channels start, so the oracle plays them exactly.
+
+The run renders each such sound's frames with the noise's sequence starting at eight places, drawn
+at random once per sound, and scores every render. The cell shows the mean, which is what a perfect
+transcription scores on average. Point at the score to see the closest and the farthest of the
+eight. A sound without noise reads **exact**. The **▶** button plays
+the render whose score lies nearest the mean, and the oracle plays beside the recording as the
+sound's file holds it, so its row has a `true` recording button. A sound written another way, such as
+a synthesized tone or a recording, shows a dash there. The change column leaves the oracle out.
+
+A variant scoring near the oracle has its notes right, and what remains is the noise's sequence. The report holds the oracle as a row of its own, named `oracle`, with `lowest` and
+`highest` beside each audio referee's score.
 
 ## Read the report
 
@@ -237,6 +258,12 @@ refused before the run starts. The packaged sets:
 - `joint-fitted-combinations-neighbors1-tonal-inertia05`, `-tonal-inertia1`: the pass with the pulses and
   the triangle kept to their neighbors at an inertia of 0.5 and 1, the noise free;
   `joint-fitted-combinations-neighbors1-inertia05` keeps every channel at 0.5.
+- `joint-logfft`, `joint-fitted-combinations-logfft`, `joint-fitted-combinations-neighbors1-logfft`: the
+  joint assignment, the fitted level with whole combinations, and the pass, each reading every frame
+  with `logfft` beside the library's own method, at equal weight
+  ([several methods at once](../concepts/reconstruction.md#32-spectrum-methods-fft-log-fft-and-cqt));
+  `joint-fitted-combinations-logfft05` and `joint-fitted-combinations-neighbors1-logfft05` read `logfft` at
+  half the library method's weight.
 
 `--levels true` matches every sound at the level its file holds, whatever working level its settings
 name, the fitted one included. For a sound written as NES frames that is the level the channels play

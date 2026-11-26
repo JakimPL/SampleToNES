@@ -21,14 +21,13 @@ DriveKey = Tuple[GeneratorClassName, float]
 class FrameHearing(Protocol):
     """How one frame of a stem hears the rows its channels may play: the one reader of a row in a frame.
 
-    A row's sound belongs to the row played on a channel. The channel's drive scales the power the
-    row adds, and the frame's analysis window hears the row among what the channel's other frames
-    play, so a row's power and feature values are read for the row on a channel, in a frame. The
-    catalog holds each row's library power, ``DrivenFeatures`` the feature values of each row heard
-    alone on a channel, and every step of the joint assignment reads a row through a hearing. The fit
-    of every combination, the search's mixes and the judge's read it through the frame's hearing. The
-    fit of every note reads each note through a frame heard alone, over the frame's leak
-    (``note_strengths``).
+    What a row adds to a frame depends on the channel that plays it and on the frame's neighbors. The
+    channel's drive scales the row's power, and the frame's analysis window hears the row among what
+    the channel's other frames play, so a row's power and feature values are read for the row on a
+    channel, in a frame. The catalog holds each row's library power, ``DrivenFeatures`` the feature
+    values of each row heard alone on a channel, and every step of the joint assignment reads a row
+    through the frame's hearing: the fit of every note, the fit of every combination, the search's
+    mixes and the judge's.
 
     A hearing answers what the frame holds before any of its rows sound, its leak, and what each
     row adds when a channel plays it, at the drive the stem gives the channel. A reading adds the
@@ -48,13 +47,6 @@ class FrameHearing(Protocol):
 
     def powers(self, place: int, rows: RowSet) -> np.ndarray:
         """The power each of ``rows`` adds when the channel at ``place`` in the layout plays it, one row per row."""
-
-    def steady_powers(self, place: int, rows: RowSet) -> np.ndarray:
-        """The power each of ``rows`` adds heard alone on the channel at ``place``, as a note held through the window.
-
-        It is the row's library power at the channel's drive (``library_powers``), whatever the
-        frame's neighbors play.
-        """
 
     def unit_powers(self, place: int, rows: RowSet) -> np.ndarray:
         """What each of ``rows`` adds as a fit of its level reads it: a scale of the row's power."""
@@ -141,13 +133,10 @@ class SteadyHearing:
         return np.zeros(self.bins)
 
     def powers(self, place: int, rows: RowSet) -> np.ndarray:
-        return self.steady_powers(place, rows)
-
-    def steady_powers(self, place: int, rows: RowSet) -> np.ndarray:
         return library_powers(self.layout, self.catalogs, place, rows)
 
     def unit_powers(self, place: int, rows: RowSet) -> np.ndarray:
-        return self.steady_powers(place, rows)
+        return self.powers(place, rows)
 
     def unit_features(self, place: int, rows: RowSet) -> np.ndarray:
         return self.driven.at(self.layout.slots[place], rows)
@@ -217,14 +206,11 @@ class SequenceHearing:
         )
 
     def powers(self, place: int, rows: RowSet) -> np.ndarray:
-        return self.surroundings[place].heard(self._keys(place, rows), self.steady_powers(place, rows))
-
-    def steady_powers(self, place: int, rows: RowSet) -> np.ndarray:
-        return library_powers(self.layout, self.catalogs, place, rows)
+        return self.surroundings[place].heard(self._keys(place, rows), self._library_powers(place, rows))
 
     def unit_powers(self, place: int, rows: RowSet) -> np.ndarray:
         gains = self.surroundings[place].gains(self._keys(place, rows))
-        return np.asarray(gains * self.steady_powers(place, rows))
+        return np.asarray(gains * self._library_powers(place, rows))
 
     def unit_features(self, place: int, rows: RowSet) -> np.ndarray:
         return heard_features(self.provider, self.unit_powers(place, rows))
@@ -247,6 +233,10 @@ class SequenceHearing:
         sound none of it, so the mix's expected waveform and variance stay those of silence.
         """
         return replace(FrameMix.empty(fragment), power=self.leak)
+
+    def _library_powers(self, place: int, rows: RowSet) -> np.ndarray:
+        """Each row's library power at the drive of the channel at ``place``, before the window hears it."""
+        return library_powers(self.layout, self.catalogs, place, rows)
 
     def _keys(self, place: int, rows: RowSet) -> List[Optional[NoteKey]]:
         """The note and timbre each of ``rows`` sounds on the channel at ``place``, ``None`` for silence."""

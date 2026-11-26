@@ -24,6 +24,7 @@ from sampletones_tools.calibration.fingerprint import (
     write_fingerprint,
 )
 from sampletones_tools.calibration.layout import CORPUS_DIRECTORY, CSV_REPORT, MARKDOWN_REPORT
+from sampletones_tools.calibration.oracle.judging import oracle_rows
 from sampletones_tools.calibration.paths import SOURCE_DIRECTORIES
 from sampletones_tools.calibration.referee.panel import RefereePanel, build_panel
 from sampletones_tools.calibration.renders import clear_renders, holds_renders
@@ -147,8 +148,9 @@ def calibrate(request: CalibrationRequest) -> CalibrationOutcome:
     recordings an earlier run left and writes the fingerprint of what it measures, and a resumed run
     confirms the directory's fingerprint matches before it takes up the records already written. The
     referees are built before the claim, since the fingerprint holds them. The corpus is written
-    next, since every conversion reads its sound from a file. The reports and the page come last,
-    from every row and record.
+    next, since every conversion reads its sound from a file. Every sound written as NES frames is
+    then read by the oracle, what playing its frames exactly scores (``oracle_rows``). The reports
+    and the page come last, from every row and record.
 
     Returns:
         CalibrationOutcome: The report and the listening page the run wrote.
@@ -176,6 +178,7 @@ def calibrate(request: CalibrationRequest) -> CalibrationOutcome:
         workers=request.workers,
         resume=request.resume,
     )
+    rows.extend(oracle_rows(items, panel, request.output, request.base, resume=request.resume))
 
     report = _write_reports(rows, request.output)
     page = build_board(

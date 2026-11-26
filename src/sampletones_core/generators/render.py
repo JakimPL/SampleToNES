@@ -7,6 +7,7 @@ from sampletones_core.constants.enums import ChannelName
 from sampletones_core.instructions import InstructionUnion
 
 from .maps import CHANNEL_CLASSES
+from .types import GeneratorUnion
 
 
 def render_instructions(
@@ -31,7 +32,26 @@ def render_instructions(
     Raises:
         ValueError: If the channel describes no frame.
     """
-    generator = CHANNEL_CLASSES[channel_name](config, channel_name.value)
+    return render_on(CHANNEL_CLASSES[channel_name](config, channel_name.value), instructions)
+
+
+def render_on(generator: GeneratorUnion, instructions: Sequence[InstructionUnion]) -> np.ndarray:
+    """One channel's audio rendered frame by frame on ``generator``, from where its oscillator stands.
+
+    Each frame continues the oscillator the one before it left running, so a note held across
+    frames sounds as a single tone. A fresh generator starts from its oscillator's reset state, and
+    one whose timer was set elsewhere starts there.
+
+    Args:
+        generator: The generator of the channel the instructions drive.
+        instructions: The channel's instructions, one per frame.
+
+    Returns:
+        np.ndarray: The channel's waveform, one frame per instruction.
+
+    Raises:
+        ValueError: If the channel describes no frame.
+    """
     frames = [generator(instruction, save=True) for instruction in instructions]  # type: ignore[arg-type]
     return np.concatenate(frames)
 

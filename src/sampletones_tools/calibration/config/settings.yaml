@@ -110,3 +110,51 @@ settings:
         inertia: {pulse1: 0.5, pulse2: 0.5, triangle: 0.5, noise: 0.5}
       decoder:
         selector: combinations
+  joint-logfft:
+    generation:
+      assignment:
+        method: joint
+      layers:
+        - {method: logfft, weight: 1.0}
+  joint-fitted-combinations-logfft:
+    general:
+      level: fitted
+    generation:
+      assignment:
+        method: joint
+      decoder:
+        selector: combinations
+      layers:
+        - {method: logfft, weight: 1.0}
+  joint-fitted-combinations-neighbors1-logfft:
+    general:
+      level: fitted
+    generation:
+      assignment:
+        method: joint
+        neighbors: 1
+      decoder:
+        selector: combinations
+      layers:
+        - {method: logfft, weight: 1.0}
+  joint-fitted-combinations-logfft05:
+    general:
+      level: fitted
+    generation:
+      assignment:
+        method: joint
+      decoder:
+        selector: combinations
+      layers:
+        - {method: logfft, weight: 0.5}
+  joint-fitted-combinations-neighbors1-logfft05:
+    general:
+      level: fitted
+    generation:
+      assignment:
+        method: joint
+        neighbors: 1
+      decoder:
+        selector: combinations
+      layers:
+        - {method: logfft, weight: 0.5}

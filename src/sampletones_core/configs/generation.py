@@ -1,4 +1,4 @@
-from typing import Final, Self, assert_never
+from typing import Final, Self, Tuple, assert_never
 
 from pydantic import ConfigDict, Field, model_validator
 
@@ -9,6 +9,7 @@ from sampletones_core.constants.enums import (
     PhaseAlignerName,
     SelectorName,
     SpectralDistance,
+    SpectrumMethod,
 )
 from sampletones_core.data import DataModel
 
@@ -164,6 +165,29 @@ class RefinementConfig(DataModel):
     window: int = Field(default=generation_default("refinement", "window"), ge=0)
 
 
+class SpectrumLayer(DataModel):
+    """A spectrum method the frames are read with beside the library's own, and the weight its reading holds.
+
+    A frame read by several methods is one feature of their bins stacked, the library's method first,
+    each read from the library its own method builds. Every layer holds its weight's share of the
+    criterion's weight, against a weight of one for the library's method.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    method: SpectrumMethod
+    weight: float = Field(gt=0.0)
+
+
+def shipped_layers() -> Tuple[SpectrumLayer, ...]:
+    """The spectrum layers a conversion reads by default, as the field holds them.
+
+    A document written before the layers existed takes this default as it loads, so it is the
+    tuple of layers itself and every render key over its configuration hashes.
+    """
+    return tuple(SpectrumLayer.model_validate(layer) for layer in generation_default("layers"))
+
+
 class GenerationConfig(DataModel):
     """How a conversion chooses what every channel plays.
 
@@ -182,6 +206,7 @@ class GenerationConfig(DataModel):
     assignment: AssignmentConfig = Field(default_factory=AssignmentConfig)
     decoder: DecoderConfig = Field(default_factory=DecoderConfig)
     refinement: RefinementConfig = Field(default_factory=RefinementConfig)
+    layers: Tuple[SpectrumLayer, ...] = Field(default_factory=shipped_layers)
 
     @model_validator(mode="after")
     def _check_decoder_reads_the_assignment(self) -> Self:

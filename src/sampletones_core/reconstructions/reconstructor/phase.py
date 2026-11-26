@@ -11,6 +11,8 @@ from sampletones_core.fft import Window
 from sampletones_core.instructions import InstructionUnion
 from sampletones_core.library import InstructionLibraryData
 
+from .drive import driven_amplitudes
+
 
 class PhaseAligner(ABC):
     def __init__(
@@ -25,12 +27,12 @@ class PhaseAligner(ABC):
 
     @abstractmethod
     def align(self, waveform: np.ndarray, instruction: InstructionUnion, drive: float) -> np.ndarray:
-        """The frame the candidate renders at its best phase against ``waveform``, read at unit drive."""
+        """The frame the candidate renders at its best phase against ``waveform``, read at the channel's ``drive``."""
 
     def _rendering(self, instruction: InstructionUnion, shift: int, drive: float) -> np.ndarray:
-        """The candidate's frame starting ``shift`` samples into its library sample, read at unit drive."""
+        """The candidate's frame starting ``shift`` samples into its library sample, read at the channel's ``drive``."""
         fragment = self.library_data[instruction].get_fragment(shift, self.config, self.window)
-        return np.asarray(fragment.audio, dtype=np.float64) / drive
+        return driven_amplitudes(np.asarray(fragment.audio, dtype=np.float64), drive)
 
     def _cycle(self, instruction: InstructionUnion) -> np.ndarray:
         """Two cycles of the candidate's library sample, which every shift of one frame reads from."""
@@ -41,12 +43,12 @@ class PhaseAligner(ABC):
 class SlidingRmsePhaseAligner(PhaseAligner):
     """
     Finds the cyclic shift minimizing the RMSE between the waveform and the candidate read at
-    unit drive, and returns the candidate's frame at that shift.
+    the channel's drive, and returns the candidate's frame at that shift.
     """
 
     def align(self, waveform: np.ndarray, instruction: InstructionUnion, drive: float) -> np.ndarray:
         windows = sliding_window_view(self._cycle(instruction), self.config.library.frame_length)
-        remainder = np.asarray(waveform, dtype=np.float64) - windows / drive
+        remainder = np.asarray(waveform, dtype=np.float64) - driven_amplitudes(windows, drive)
 
         rmse = np.sqrt((remainder**2).mean(axis=1))
         return self._rendering(instruction, int(np.argmin(rmse)), drive)
@@ -55,7 +57,7 @@ class SlidingRmsePhaseAligner(PhaseAligner):
 class CrossCorrelationPhaseAligner(PhaseAligner):
     """
     Finds the cyclic shift minimizing the squared error between the waveform and the candidate
-    read at unit drive via FFT cross-correlation, expanding
+    read at the channel's drive via FFT cross-correlation, expanding
     `||waveform - candidate / drive||^2` into a per-shift cost of
     `energy / drive - 2 * correlation` (the constant waveform energy and the positive
     drive factor drop out of the argmin), and returns the candidate's frame at that shift.

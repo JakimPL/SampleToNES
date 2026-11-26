@@ -47,10 +47,10 @@ approximates the summed recordings because each part approximates its part.
 ### 3. A drive reaches for a louder instruction
 
 A stem's settings name a drive per channel it holds. `1.00` is the level the library is calibrated to. The
-drive belongs to the conversion alone. Every candidate is read at unit drive, so the instruction winning a
-frame is the one that sounds it at the drive. A channel pushed harder is answered by louder instructions,
-up to the loudest that channel holds. Past that the channel saturates, which is the effect a drive is used
-for.
+drive belongs to the conversion alone. Every candidate is read at the channel's drive, a drive `d` reading
+it at `1/d` of its amplitude, so the instruction winning a frame is the one that sounds it `d` times
+louder. A channel pushed harder is answered by louder instructions, up to the loudest that channel holds.
+Past that the channel saturates, which is the effect a drive is used for.
 
 A drive applies to one channel of one stem. Raising it lifts that part of the mix, and the other stems and
 the stem's other channels stay where they are. Afterwards a frame sounds the instruction it carries, so
@@ -128,7 +128,7 @@ A stem's channels fall into groups, each of one kind at one drive:
   the groups sounds distinct and is weighed on its own.
 
 A pick scores each group as one column, which resolves to the group's lowest free channel, so successive
-picks over one kind land on the lowest free channel. The
+picks over one group land on its lowest free channel. The
 [joint assignment](reconstruction.md#52-assigning-channels-jointly) searches every placement of a frame's
 proposals over the groups. Equal candidates go to the stem earlier in level order, so a rerun assigns the
 same way every time.

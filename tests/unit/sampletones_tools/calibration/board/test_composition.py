@@ -10,10 +10,18 @@ from sampletones_tools.calibration.board.model import BoardGlyphs, BoardPage
 from sampletones_tools.calibration.board.reading import read_runs
 from sampletones_tools.calibration.config.level import VariantLevel
 from sampletones_tools.calibration.fingerprint import write_fingerprint
-from sampletones_tools.calibration.layout import combination_name
+from sampletones_tools.calibration.layout import ORACLE_LABEL, combination_name
 from sampletones_tools.calibration.renders import RenderRecord, recording_path, write_record
 from sampletones_tools.web.roles.table import channel_role
-from tests.unit.sampletones_tools.calibration.runs import probe_fingerprint, write_renders, write_run
+from tests.unit.sampletones_tools.calibration.runs import (
+    ORACLE_HIGHEST,
+    ORACLE_LOWEST,
+    ORACLE_SCORE,
+    probe_fingerprint,
+    write_oracle,
+    write_renders,
+    write_run,
+)
 
 TITLE: Final[str] = "Calibration"
 GLYPHS: Final[BoardGlyphs] = BoardGlyphs(header="≈", expanded="▾", collapsed="▸", play="▶")
@@ -183,3 +191,59 @@ class TestNoRun:
     def test_a_page_without_a_run_is_refused(self) -> None:
         with pytest.raises(ValueError, match="at least one run"):
             compose_page([], InPlaceClips(), TITLE, GLYPHS)
+
+
+class TestTheOracle:
+    """A run that read the oracle of its written sounds shows it first, beside the variants."""
+
+    @pytest.fixture(name="oracle_run")
+    def oracle_run_fixture(self, run: Path) -> Path:
+        write_oracle(run, ["tone-a", "chord-a"])
+        return run
+
+    def test_the_oracle_s_column_leads_the_table(self, oracle_run: Path) -> None:
+        columns = page_of([oracle_run], oracle_run).groups[0].columns
+
+        assert [(column.name, column.oracle) for column in columns] == [
+            (ORACLE_LABEL, True),
+            ("cqt-pe1", False),
+            ("fft-pe1", False),
+        ]
+        assert columns[0].words == (ORACLE_LABEL,)
+
+    def test_a_sound_the_oracle_read_holds_its_mean_and_its_spread_first(self, oracle_run: Path) -> None:
+        tone = page_of([oracle_run], oracle_run).groups[0].rows[0]
+
+        oracle = tone.cells[0]
+        assert oracle is not None
+        assert (oracle.score, oracle.spread) == (ORACLE_SCORE, (ORACLE_LOWEST, ORACLE_HIGHEST))
+        assert all(cell is not None and cell.spread is None for cell in tone.cells[1:])
+
+    def test_a_sound_the_oracle_left_unread_keeps_its_row_with_an_empty_oracle_cell(self, oracle_run: Path) -> None:
+        rows = page_of([oracle_run], oracle_run).groups[0].rows
+
+        mix = next(row for row in rows if row.item == "mix-a")
+        assert mix.cells[0] is None
+        assert all(cell is not None for cell in mix.cells[1:])
+
+    def test_the_oracle_plays_beside_the_recording_at_the_true_level(self, oracle_run: Path) -> None:
+        tone = page_of([oracle_run], oracle_run).groups[0].rows[0]
+
+        assert [recording.level for recording in tone.recordings] == [
+            VariantLevel.TRUE.value,
+            VariantLevel.DEFAULT.value,
+        ]
+        assert all((oracle_run / recording.clip).is_file() for recording in tone.recordings)
+
+    def test_a_run_that_read_no_oracle_holds_no_oracle_column(self, run: Path) -> None:
+        columns = page_of([run], run).groups[0].columns
+
+        assert not any(column.oracle for column in columns)
+
+    def test_a_page_comparing_runs_holds_the_versions_alone(self, runs: List[Path], tmp_path: Path) -> None:
+        for directory in runs:
+            write_oracle(directory, ["tone-a"])
+
+        page = page_of(runs, tmp_path)
+
+        assert all(not column.oracle for group in page.groups for column in group.columns)

@@ -211,5 +211,6 @@ def library_matcher(
         window=window,
         channels=channels,
         library_data=InstructionLibraryData.create(config, data),
+        layer_data=(),
         signal_length=JOINT_SIGNAL_LENGTH,
     ).matcher

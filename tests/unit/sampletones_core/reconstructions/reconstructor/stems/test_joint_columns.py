@@ -43,6 +43,7 @@ FIRST_OTHER: Final[PulseInstruction] = PulseInstruction(on=True, pitch=60, volum
 SECOND_OTHER: Final[PulseInstruction] = PulseInstruction(on=True, pitch=57, volume=8, duty_cycle=1)
 BASS: Final[TriangleInstruction] = TriangleInstruction(on=True, pitch=48)
 OTHER_BASS: Final[TriangleInstruction] = TriangleInstruction(on=True, pitch=45)
+LOUDER_DRIVE: Final[float] = 2.0
 HIT: Final[NoiseInstruction] = NoiseInstruction(on=True, period=4, volume=15, short=False)
 SILENT_NOISE: Final[NoiseInstruction] = NoiseInstruction.null_instruction()
 CHORD: Final[Dict[ChannelName, InstructionUnion]] = {
@@ -80,10 +81,13 @@ class _Columns:
 
 
 def _columns_of(
-    fragment: Fragment, all_channels: Dict[ChannelName, GeneratorUnion], joint_matcher: FrameMatcher
+    fragment: Fragment,
+    all_channels: Dict[ChannelName, GeneratorUnion],
+    joint_matcher: FrameMatcher,
+    settings: StemSettings,
 ) -> _Columns:
     """The columns of ``fragment`` around a winner playing the chord, with the proposals they draw on."""
-    layout = separate_layouts(StemsConfig.single_entry(StemSettings.covering(EVERY_CHANNEL)), all_channels)[0]
+    layout = separate_layouts(StemsConfig.single_entry(settings), all_channels)[0]
     catalogs = {
         slot.kind: KindCatalog.build(joint_matcher.candidate_provider, all_channels[slot.channel_name])
         for slot in layout.slots
@@ -120,7 +124,21 @@ def columns_fixture(
     all_channels: Dict[ChannelName, GeneratorUnion],
     joint_matcher: FrameMatcher,
 ) -> _Columns:
-    return _columns_of(rendered_fragment(config, extractor, CHORD), all_channels, joint_matcher)
+    return _columns_of(
+        rendered_fragment(config, extractor, CHORD), all_channels, joint_matcher, StemSettings.covering(EVERY_CHANNEL)
+    )
+
+
+@pytest.fixture(name="driven_apart_columns", scope="module")
+def driven_apart_columns_fixture(
+    config: Config,
+    extractor: FeatureExtractor,
+    all_channels: Dict[ChannelName, GeneratorUnion],
+    joint_matcher: FrameMatcher,
+) -> _Columns:
+    """The chord's columns with the first pulse driven louder, so the pulses stand in two groups."""
+    settings = StemSettings.covering(EVERY_CHANNEL).with_drive(ChannelName.PULSE1, LOUDER_DRIVE)
+    return _columns_of(rendered_fragment(config, extractor, CHORD), all_channels, joint_matcher, settings)
 
 
 @pytest.fixture(name="louder_columns", scope="module")
@@ -132,7 +150,9 @@ def louder_columns_fixture(
 ) -> _Columns:
     """The columns of a frame whose lead plays at full volume, around a winner playing it quieter."""
     louder = {**CHORD, ChannelName.PULSE1: FULL_LEAD}
-    return _columns_of(rendered_fragment(config, extractor, louder), all_channels, joint_matcher)
+    return _columns_of(
+        rendered_fragment(config, extractor, louder), all_channels, joint_matcher, StemSettings.covering(EVERY_CHANNEL)
+    )
 
 
 def _instructions(column: Column) -> List[InstructionUnion]:
@@ -171,6 +191,13 @@ class TestAChannelsColumn(BaseTestSuite):
 
         assert HARMONY.pitch not in _pitches(first)
         assert LEAD.pitch not in _pitches(second)
+
+    def test_a_note_the_choice_plays_on_a_pulse_driven_apart_is_offered(self, driven_apart_columns: _Columns) -> None:
+        """A pulse of another group sounds the note at its own level, so the move sounds a combination of its own."""
+        first, second, _, _ = driven_apart_columns.built(WIDE)
+
+        assert HARMONY.pitch in _pitches(first)
+        assert LEAD.pitch in _pitches(second)
 
     def test_the_triangle_offers_its_one_level_and_each_untaken_note(self, columns: _Columns) -> None:
         _, _, triangle, _ = columns.built(WIDE)

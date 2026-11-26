@@ -8,6 +8,8 @@ from sampletones_core.constants.enums import ChannelName
 from sampletones_tools.calibration.config.level import VariantLevel
 from sampletones_tools.calibration.digest import sha256_digest
 from sampletones_tools.calibration.fingerprint import RunFingerprint, write_fingerprint
+from sampletones_tools.calibration.layout import ORACLE_LABEL
+from sampletones_tools.calibration.oracle.reading import HIGHEST_READING, LOWEST_READING
 from sampletones_tools.calibration.renders import (
     RenderRecord,
     write_channel_renders,
@@ -21,6 +23,9 @@ REFEREE: Final[str] = "mr-auditory-dB"
 SECOND_REFEREE: Final[str] = "mr-loudness-dB"
 SOURCE: Final[str] = "probe-source"
 SILENCE_SCORE: Final[float] = 20.0
+ORACLE_SCORE: Final[float] = 2.0
+ORACLE_LOWEST: Final[float] = 1.5
+ORACLE_HIGHEST: Final[float] = 2.5
 
 
 @dataclass(frozen=True)
@@ -96,3 +101,37 @@ def write_renders(directory: Path, variants: Sequence[str], offset: float, *, le
             write_channel_renders(directory, variant, probe.item, approximations, SAMPLE_RATE)
 
     return directory
+
+
+def write_oracle(directory: Path, items: Sequence[str]) -> None:
+    """The oracle's renders, records and recordings of the probes named ``items``, written as the oracle writes them."""
+    for position, probe in enumerate(ITEMS):
+        if probe.item not in items:
+            continue
+
+        write_recording(directory, VariantLevel.TRUE, probe.item, channel_audio(ChannelName.TRIANGLE), SAMPLE_RATE)
+        approximations = {channel: channel_audio(channel) for channel in probe.channels}
+        write_render(
+            directory,
+            RenderRecord(
+                variant=ORACLE_LABEL,
+                item=probe.item,
+                position=position,
+                family=probe.family,
+                category=probe.category,
+                level=VariantLevel.TRUE,
+                timelines={channel.value: "1111" for channel in probe.channels},
+                judgments={
+                    REFEREE: {"score": ORACLE_SCORE, LOWEST_READING: ORACLE_LOWEST, HIGHEST_READING: ORACLE_HIGHEST},
+                    SECOND_REFEREE: {
+                        "score": ORACLE_SCORE,
+                        LOWEST_READING: ORACLE_LOWEST,
+                        HIGHEST_READING: ORACLE_HIGHEST,
+                    },
+                },
+                silence={REFEREE: SILENCE_SCORE, SECOND_REFEREE: SILENCE_SCORE},
+            ),
+            sum(approximations.values()),
+            SAMPLE_RATE,
+        )
+        write_channel_renders(directory, ORACLE_LABEL, probe.item, approximations, SAMPLE_RATE)

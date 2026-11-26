@@ -111,3 +111,17 @@ class TestTheBoundsOfTheSettings:
     def test_a_negative_channel_price_is_refused(self) -> None:
         with pytest.raises(ValidationError):
             WeightsConfig(channel_price=-0.01)
+
+
+class TestADocumentWrittenBeforeTheLayers:
+    """A reconstruction written before the spectrum layers existed reads the shipped layers as it loads."""
+
+    def test_its_generation_holds_the_shipped_layers_and_hashes(self) -> None:
+        shipped = GenerationConfig()
+        data = GenerationConfig.unpack(shipped.serialize())
+        data.pop("layers")
+
+        older = GenerationConfig.deserialize_inner(data)
+
+        assert older == shipped
+        assert hash(older) == hash(shipped)

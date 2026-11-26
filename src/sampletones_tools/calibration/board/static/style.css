@@ -193,6 +193,17 @@ col.change {
   background: var(--card-header-hover);
 }
 
+/* The oracle's heading reads apart from the conversions', since it plays every sound's frames exactly. */
+.table.sounds th.version.oracle .column-toggle {
+  font-style: italic;
+  color: var(--text-muted);
+}
+
+/* A sound the oracle reads no frames of holds a dash in its column. */
+td.version .unread {
+  color: var(--text-muted);
+}
+
 .column-toggle {
   appearance: none;
   margin: 0;

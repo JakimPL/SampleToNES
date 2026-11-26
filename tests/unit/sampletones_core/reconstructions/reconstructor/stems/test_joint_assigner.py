@@ -21,6 +21,7 @@ from sampletones_core.reconstructions.reconstructor.contribution import Contribu
 from sampletones_core.reconstructions.reconstructor.decoder.base import PooledCombination
 from sampletones_core.reconstructions.reconstructor.decoder.transition import TransitionWeights
 from sampletones_core.reconstructions.reconstructor.matching import FrameMatcher
+from sampletones_core.reconstructions.reconstructor.stems.assignment.joint import assigner as assigner_module
 from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.assigner import (
     UNVOICED_DISTANCE,
     JointAssigner,
@@ -30,8 +31,14 @@ from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.catal
 from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.choice import ScoredCombination
 from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.combinations import Rows
 from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.continuity import ChannelContinuity
-from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.hearing import SteadyHearing
-from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.layout import separate_layouts
+from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.fit import FitTarget
+from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.hearing import (
+    FrameHearing,
+    SequenceHearing,
+    SteadyHearing,
+)
+from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.layout import StemLayout, separate_layouts
+from sampletones_core.reconstructions.reconstructor.stems.assignment.joint.proposals import HeardAtoms, proposed_rows
 from sampletones_core.reconstructions.reconstructor.stems.configs.config import StemsConfig
 from sampletones_core.reconstructions.reconstructor.stems.configs.entry import StemEntry
 from sampletones_core.reconstructions.reconstructor.stems.configs.hierarchy import StemsHierarchy
@@ -388,7 +395,7 @@ class TestAssigningBesideTheNeighbors(BaseTestSuite):
         """Assigns ``frame`` of ``played`` (``lines`` where unnamed) among neighbors decoded to play ``lines``."""
         fragments = extractor.extract(played_lines(config, lines if played is None else played, SEQUENCE_FRAMES))
         bins = len(fragments[frame].feature.values)
-        profiles = frame_profiles(config, window, bins)
+        profiles = frame_profiles(config, window, (bins,))
         silence = Contribution.silence(bins, config.library.frame_length)
         decoded = assigner.lines(decoded_lines(lines, assigner.channels, silence, SEQUENCE_FRAMES))
         heard = {channel_name: surroundings(line, frame, profiles) for channel_name, line in decoded.items()}
@@ -406,25 +413,43 @@ class TestAssigningBesideTheNeighbors(BaseTestSuite):
 
         assert _notes(_heads(assignment)) == {("pulse", LEAD.pitch)}
 
-    def test_a_frame_among_its_neighbors_fits_its_notes_heard_alone(
+    def test_a_frame_among_its_neighbors_fits_its_notes_through_its_own_hearing(
         self,
         config: Config,
         window: Window,
         extractor: FeatureExtractor,
         every_channel_assigner: JointAssigner,
         staccato: Dict[ChannelName, List[InstructionUnion]],
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """The fit of every note hears each note alone among the frame's neighbors too, as a frame heard alone does."""
+        """The fit of every note reads the atoms as the frame's hearing hears them, its own share of the window."""
         assigner = every_channel_assigner
         (layout,) = assigner.layouts
+        fitted: List[Tuple[HeardAtoms, FrameHearing]] = []
+
+        def proposing(
+            fragment: Fragment,
+            target: FitTarget,
+            stem: StemLayout,
+            atoms: HeardAtoms,
+            catalogs: Mapping[GeneratorClassName, KindCatalog],
+            matcher: FrameMatcher,
+            hearing: FrameHearing,
+        ) -> Dict[GeneratorClassName, List[int]]:
+            fitted.append((atoms, hearing))
+            return proposed_rows(fragment, target, stem, atoms, catalogs, matcher, hearing)
+
+        monkeypatch.setattr(assigner_module, "proposed_rows", proposing)
 
         self._beside(config, window, extractor, assigner, staccato, BASS_FRAMES)
 
-        bins = int(next(iter(assigner.catalogs.values())).powers.shape[1])
-        alone = SteadyHearing(layout=layout, catalogs=assigner.catalogs, driven=assigner.driven, bins=bins)
-        heard = assigner.dictionaries[layout.stem_id].heard(alone)
-        assert np.array_equal(assigner.steady_atoms[layout.stem_id].features, heard.features)
-        assert np.array_equal(assigner.steady_atoms[layout.stem_id].powers, heard.powers)
+        ((atoms, hearing),) = fitted
+        assert isinstance(hearing, SequenceHearing)
+        heard = assigner.dictionaries[layout.stem_id].heard(hearing)
+        assert np.array_equal(atoms.features, heard.features)
+        assert np.array_equal(atoms.powers, heard.powers)
+        alone = SteadyHearing(layout=layout, catalogs=assigner.catalogs, driven=assigner.driven, bins=len(hearing.leak))
+        assert np.all(atoms.powers < assigner.dictionaries[layout.stem_id].heard(alone).powers)
 
     def test_a_frame_inside_a_held_chord_keeps_the_chord(
         self,
@@ -454,7 +479,7 @@ class TestAssigningBesideTheNeighbors(BaseTestSuite):
             decoded_lines(silent_lead, every_channel_assigner.channels, silence, SEQUENCE_FRAMES)
         )
         frame = BASS_FRAMES
-        profiles = frame_profiles(config, window, len(fragments[frame].feature.values))
+        profiles = frame_profiles(config, window, (len(fragments[frame].feature.values),))
         heard = {channel_name: surroundings(line, frame, profiles) for channel_name, line in lines.items()}
 
         assignment = every_channel_assigner.assign_beside(

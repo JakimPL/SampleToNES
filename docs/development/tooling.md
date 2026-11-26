@@ -161,6 +161,9 @@ push looks the mark up.
 
 `make check` runs pre-commit over every file, then the doctests, the suite and the screen scenarios.
 Every check runs whatever the earlier ones reported, so one run shows everything that is wrong. The
+suite and the screen scenarios run on as many workers as `make test` and `make screens` do, and
+`make check ARGS="--workers 2 --screen-workers 1"` runs them on fewer, for a machine busy with other
+work. The
 run marks the commit when every check passed and the work tree held exactly that commit's files from
 the start of the run to its end. A run over uncommitted files marks nothing, and it says so as it
 starts.

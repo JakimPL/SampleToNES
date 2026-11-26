@@ -108,6 +108,10 @@ dimension the import starts carrying.
 * The `fft` and `logfft` analysis floors. Their window spans two cycles of the pulse's lowest note, so the
   triangle's lowest octave reaches them by its harmonics alone. Covering it doubles their window and
   coarsens their timing.
+* Spectrum layers in the application. Its library step builds the library of `library.spectrum_method`
+  alone, so a configuration adding `generation.layers` converts there only once each added method's
+  library exists; the command line prepares every one (`ensure_library`). The application's library step
+  building each analysis layer's library closes it.
 * The joint assignment for stems that share channels. It solves each stem on its own channels, so a setup
   where two stems may take one channel is refused under `generation.assignment.method: joint`. A joint
   choice across stems, ordered by the hierarchy, closes it.

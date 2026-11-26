@@ -154,6 +154,19 @@ class TestTheChannelGroups(BaseTestSuite):
 
         assert _described(layout.groups_of(PULSE)) == [(PULSE, LOUDER_DRIVE, (0, 1))]
 
+    @pytest.mark.parametrize(
+        "first, second, expected",
+        [(LOUDER_DRIVE, LOUDER_DRIVE, (0, 1)), (LOUDER_DRIVE, SOFTER_DRIVE, (1,))],
+        ids=["alike", "apart"],
+    )
+    def test_a_channel_s_group_holds_the_channels_driven_alike(
+        self, first: float, second: float, expected: Tuple[int, ...]
+    ) -> None:
+        layout = _pulses_at(first, second)
+
+        assert layout.group_of(1).places == expected
+        assert layout.group_of(2).places == (2,)
+
     def test_a_stem_of_no_channel_holds_no_group(self) -> None:
         assert StemLayout(stem_id=0, slots=(), cap=0).groups == ()
 

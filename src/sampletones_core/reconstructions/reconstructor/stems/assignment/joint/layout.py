@@ -126,6 +126,10 @@ class StemLayout:
         """The groups of the stem's channels of ``kind``, in the order of their lowest channels."""
         return tuple(group for group in self.groups if group.kind == kind)
 
+    def group_of(self, place: int) -> ChannelGroup:
+        """The group holding the channel at ``place``."""
+        return next(group for group in self.groups if place in group.places)
+
     def first_place(self, kind: GeneratorClassName) -> int:
         """The place a row of ``kind`` sounding alone fills first: the lowest channel of the kind's first group.
 

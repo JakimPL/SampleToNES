@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Dict, Optional, Self, Union
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, model_validator
 
 from sampletones_core.configs.general import GeneralConfig
 from sampletones_core.configs.generation import GenerationConfig
@@ -37,6 +37,19 @@ class Config(DataModel):
         default_factory=Metadata.default,
         description="Application metadata",
     )
+
+    @model_validator(mode="after")
+    def _check_layers_read_other_methods(self) -> Self:
+        """Refuse a spectrum layer reading the library's own method, or a method another layer reads.
+
+        Raises:
+            ValueError: If two of the frame's readings share a spectrum method.
+        """
+        methods = [self.library.spectrum_method, *(layer.method for layer in self.generation.layers)]
+        if len(set(methods)) < len(methods):
+            raise ValueError(f"Each spectrum method reads the frames once; the readings are {', '.join(methods)}")
+
+        return self
 
     @classmethod
     def default(cls) -> Self:

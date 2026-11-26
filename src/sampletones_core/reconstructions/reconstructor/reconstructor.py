@@ -15,6 +15,7 @@ from sampletones_core.configs import Config
 from sampletones_core.configs.generation import PASSES_HEARD_ALONE
 from sampletones_core.constants.enums import ChannelName, ordered_channels
 from sampletones_core.fft import Fragment, FragmentedAudio, Window
+from sampletones_core.fft.layers import analysis_layers
 from sampletones_core.generators import get_generators_by_channels
 from sampletones_core.library import InstructionLibrary, InstructionLibraryData
 from sampletones_core.reconstructions.progress import (
@@ -159,6 +160,7 @@ class Reconstructor:
         self.window: Window = Window.from_config(self.config)
         self.level: WorkingLevel = level_factory(self.config, self.channels, self.window)
         self.library_data: InstructionLibraryData = self.load_library(library)
+        self.layer_data: Tuple[InstructionLibraryData, ...] = self.load_layer_libraries(library)
 
     def __call__(
         self,
@@ -379,6 +381,7 @@ class Reconstructor:
             window=self.window,
             channels=self.channels,
             library_data=self.library_data,
+            layer_data=self.layer_data,
             signal_length=signal_length,
         )
 
@@ -430,7 +433,7 @@ class Reconstructor:
         neighbor_pass = NeighborPass.over(
             JointAssigner(stems_config, self.channels, worker.matcher, worker.decoder.lattice_width),
             streams,
-            frame_profiles(self.config, self.window, self._bins(stem_frames)),
+            frame_profiles(self.config, self.window, worker.candidate_provider.sizes),
             TransitionWeights.of(self.config),
             self.config.generation.assignment.inertia,
         )
@@ -455,11 +458,6 @@ class Reconstructor:
             yield frame
 
         announce(report, ReconstructionStage.MATCHING, matched + frames, total)
-
-    @staticmethod
-    def _bins(stem_frames: Dict[int, FragmentedAudio]) -> int:
-        """The bins every frame's feature holds, which the first stem's first frame shows."""
-        return len(next(iter(stem_frames.values()))[0].feature.values)
 
     @staticmethod
     def _frames_at(stem_frames: Dict[int, FragmentedAudio], frame: int) -> Dict[int, Fragment]:
@@ -550,16 +548,39 @@ class Reconstructor:
         Raises:
             NoLibraryDataError: If no library exists for the configuration and window.
         """
-        library = library or InstructionLibrary.from_config(self.config)
-        library_data = library.get(self.config, self.window)
-        key = library.create_key(self.config, self.window)
+        return self._library_of(library or InstructionLibrary.from_config(self.config), self.config, self.window)
+
+    def load_layer_libraries(self, library: Optional[InstructionLibrary] = None) -> Tuple[InstructionLibraryData, ...]:
+        """Loads the library of every spectrum method ``generation.layers`` adds, each for the enabled channels.
+
+        Args:
+            library: The instruction library to draw from; a default library rooted at the
+                configured directory is used when omitted.
+
+        Returns:
+            One library per added method, in the order the configuration adds them.
+
+        Raises:
+            NoLibraryDataError: If an added method's library is missing.
+        """
+        source = library or InstructionLibrary.from_config(self.config)
+        return tuple(self._library_of(source, layer.config, layer.window) for layer in analysis_layers(self.config)[1:])
+
+    def _library_of(self, library: InstructionLibrary, config: Config, window: Window) -> InstructionLibraryData:
+        """The library ``config`` and ``window`` select from ``library``, restricted to the enabled channels.
+
+        Raises:
+            NoLibraryDataError: If no library exists for the configuration and window.
+        """
+        library_data = library.get(config, window)
+        key = library.create_key(config, window)
         if not library_data:
             raise NoLibraryDataError(
                 f"No library data found for the given configuration and window: {library.get_path(key)}"
             )
 
         return InstructionLibraryData.create(
-            config=self.config,
+            config=config,
             data=library_data.filter(
                 tuple(generator.class_name() for generator in self.channels.values()),
             ),

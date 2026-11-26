@@ -38,3 +38,5 @@ refinement:
   confidence: 0.10
   change_weight: 2.0
   window: 4
+
+layers: []

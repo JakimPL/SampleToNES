@@ -29,27 +29,55 @@ CHANGED_FILES: Final[str] = (
     "Commit the changes and run `make check` again before pushing."
 )
 MARKED: Final[str] = "Commit {commit} passed every check and can be pushed."
+WORKERS_OPTION: Final[str] = "--workers"
+SCREEN_WORKERS_OPTION: Final[str] = "--screen-workers"
 
 
-def planned_checks(python: str) -> Tuple[Pass, ...]:
+def planned_checks(python: str, runner_options: Sequence[str]) -> Tuple[Pass, ...]:
     """Every check a push waits for, in order: pre-commit over every file, then the doctests, the
     covered suite and the screen scenarios.
 
     These are the passes CI runs on a pull request. The hooks come first, since they answer in
-    minutes and the tests take far longer. Each test pass is the command its make target runs, so
-    a pass the check runs behaves as it does on its own.
+    minutes and the tests take far longer. Each test pass is the command its make target runs, with
+    the options the check was given for the test runner, so a pass the check runs behaves as it
+    does on its own.
 
     Args:
         python: The interpreter the test runner runs on.
+        runner_options: The test runner's options every test pass takes (``worker_options``).
 
     Returns:
         Tuple[Pass, ...]: The checks, in the order they run.
     """
     hooks = Pass(HOOKS, "Checking every file with pre-commit...", RUN_HOOKS)
     tests = (
-        Pass(name, f"Checking {description}...", (python, RUN_TESTS_SCRIPT, name)) for name, description in TEST_PASSES
+        Pass(name, f"Checking {description}...", (python, RUN_TESTS_SCRIPT, name, *runner_options))
+        for name, description in TEST_PASSES
     )
     return (hooks, *tests)
+
+
+def worker_options(workers: Optional[str], screen_workers: Optional[str]) -> Tuple[str, ...]:
+    """The test runner's options for the worker counts the check was given.
+
+    A count left out keeps the test runner's own default, so a check run on a busy machine may lower
+    the load its passes take and an idle one runs as ``make test`` and ``make screens`` do.
+
+    Args:
+        workers: The pytest workers for the covered suite, or ``None`` for the runner's default.
+        screen_workers: The pytest workers for the screen scenarios, or ``None`` for the runner's default.
+
+    Returns:
+        Tuple[str, ...]: The options, each count after its flag.
+    """
+    options: Tuple[str, ...] = ()
+    if workers is not None:
+        options = (*options, WORKERS_OPTION, workers)
+
+    if screen_workers is not None:
+        options = (*options, SCREEN_WORKERS_OPTION, screen_workers)
+
+    return options
 
 
 def check_commit(
@@ -106,11 +134,21 @@ def mark_unchanged_commit(root: Path, started_on: Optional[str]) -> None:
 def main(argv: Sequence[str]) -> int:
     """Runs every check a push waits for and marks the commit they passed on."""
     parser = argparse.ArgumentParser(description="Run every check a push waits for and mark the commit they passed on.")
-    parser.parse_args(list(argv))
+    parser.add_argument(
+        WORKERS_OPTION,
+        default=None,
+        help="pytest workers for the covered suite, the test runner's default where left out",
+    )
+    parser.add_argument(
+        SCREEN_WORKERS_OPTION,
+        default=None,
+        help="pytest workers for the screen scenarios, the test runner's default where left out",
+    )
+    arguments = parser.parse_args(list(argv))
 
     return check_commit(
         repository_root(),
-        planned_checks(sys.executable),
+        planned_checks(sys.executable, worker_options(arguments.workers, arguments.screen_workers)),
         runner=run,
         environment=os.environ,
     )

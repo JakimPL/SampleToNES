@@ -55,6 +55,7 @@ records them.
 | Key | Meaning | Values |
 | --- | --- | --- |
 | `reset_phase` | reset oscillator phase within each instruction | `true` / `false` |
+| `layers` | spectrum methods every frame is also read with, beside `library.spectrum_method`, each with the weight its reading holds against a weight of `1` for the library's method; each method reads its own library, built as that method's library is | list of `{method, weight}`, `method` one of `fft` / `logfft` / `cqt` other than the library's and each other's, `weight` > 0; empty by default |
 
 ### `generation.calculation`
 

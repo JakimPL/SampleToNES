@@ -131,8 +131,9 @@ class JointAssigner:
     A frame is first heard alone, each note as if held through the whole analysis window. Once the
     recording is decoded, a frame may be assigned again among the notes its neighbors play
     (``assign_beside``): what they leave in its window is a fixed part of every mix, and a note
-    extending a neighbor's note adds to it as one note held across the frames. Its choice, columns
-    and pool may then also pay for breaking with what the frames beside it play.
+    extending a neighbor's note adds to it as one note held across the frames. Every step reads the
+    frame through its hearing, the fit of every note included. Its choice, columns and pool may then
+    also pay for breaking with what the frames beside it play.
     """
 
     def __init__(
@@ -146,8 +147,8 @@ class JointAssigner:
 
         Each kind's rows are read once for the recording: as the joint assignment names them, and in
         feature values at every drive the stems give the kind's channels. Each stem holding a channel
-        has its note dictionary. The fit of every note hears a stem's atoms alone in every frame, alike
-        in each, so the first frame hears them for the recording (``steady_atoms``).
+        has its note dictionary. A frame heard alone hears a stem's atoms alike in every frame, so the
+        first frame heard alone hears them for the recording (``steady_atoms``).
 
         Raises:
             ValueError: If a stem allows a channel the run has no generator for, or two stems may
@@ -177,9 +178,11 @@ class JointAssigner:
             The channels each stem holds, the channels left resting and every stem's pool.
         """
         bins = self._bins(fragments)
+        hearings = {layout.stem_id: self._alone(layout, bins) for layout in self.layouts}
         return self._assigned(
             fragments,
-            {layout.stem_id: self._alone(layout, bins) for layout in self.layouts},
+            hearings,
+            self._heard_alone(hearings),
             {layout.stem_id: StemContinuity.free(layout, self.catalogs) for layout in self.layouts},
         )
 
@@ -208,8 +211,13 @@ class JointAssigner:
             for layout in self.layouts
             if layout.slots
         }
+        atoms = {
+            stem_id: self.dictionaries[stem_id].heard(hearings[stem_id])
+            for stem_id in sounding_stems(fragments)
+            if stem_id in self.dictionaries
+        }
         continuities = {layout.stem_id: StemContinuity.of(layout, self.catalogs, continuity) for layout in self.layouts}
-        return self._assigned(fragments, hearings, continuities)
+        return self._assigned(fragments, hearings, atoms, continuities)
 
     def lines(self, streams: Streams) -> Dict[ChannelName, ChannelLine]:
         """Every stem channel's decoded frames as the analysis hears them, at the drive the stem gives it.
@@ -255,11 +263,11 @@ class JointAssigner:
                     catalog.instructions[row],
                 )
 
-    def _heard_alone(self, bins: int) -> Dict[int, HeardAtoms]:
-        """Every stem's atoms as a frame heard alone hears them, heard by the first frame for the recording."""
-        for layout in self.layouts:
-            if layout.stem_id in self.dictionaries and layout.stem_id not in self.steady_atoms:
-                self.steady_atoms[layout.stem_id] = self.dictionaries[layout.stem_id].heard(self._alone(layout, bins))
+    def _heard_alone(self, hearings: Mapping[int, SteadyHearing]) -> Dict[int, HeardAtoms]:
+        """Every stem's atoms as a frame heard alone hears them, heard by the first such frame for the recording."""
+        for stem_id, dictionary in self.dictionaries.items():
+            if stem_id not in self.steady_atoms:
+                self.steady_atoms[stem_id] = dictionary.heard(hearings[stem_id])
 
         return self.steady_atoms
 
@@ -276,15 +284,15 @@ class JointAssigner:
         self,
         fragments: Dict[int, Fragment],
         hearings: Mapping[int, FrameHearing],
+        atoms: Mapping[int, HeardAtoms],
         continuities: Mapping[int, StemContinuity],
     ) -> StemFrameAssignment:
         """Assigns one frame, each sounding stem's frame heard as ``hearings`` hears it and kept to ``continuities``.
 
-        The fit of every note hears each stem's atoms alone (``steady_atoms``). The channels left
+        ``atoms`` holds each sounding stem's atoms as its hearing hears them. The channels left
         resting stand in channel order.
         """
         sounding = sounding_stems(fragments)
-        atoms = self._heard_alone(self._bins(fragments))
         answers: List[StemAnswer] = []
         for layout in self.layouts:
             if not layout.slots:

@@ -11,7 +11,7 @@ from sampletones_shared.array import xp
 from .batches import cheapest_row, split_by_group
 from .catalog import KindCatalog, alike_timbres
 from .fit import FitTarget, fitted_levels
-from .hearing import FrameHearing, SteadyHearing, rows_by_place
+from .hearing import FrameHearing, rows_by_place
 from .layout import StemLayout
 
 FREE_FIT_START: Final[float] = 0.05
@@ -31,9 +31,9 @@ KindNote = Tuple[GeneratorClassName, int]
 class NoteStrengths:
     """How strongly a frame sounds each note of each kind, as the fit of every note at once reads it.
 
-    A note's strength is the power its atoms' fitted levels sound it at heard alone (``HeardAtoms``),
-    summed over its timbres and unweighted, so a bass counts for what it plays where the criterion's
-    weights are light.
+    A note's strength is the power its atoms' fitted levels add to the frame's reading
+    (``HeardAtoms``), summed over its timbres and unweighted, so a bass counts for what it plays where
+    the criterion's weights are light.
 
     Attributes:
         strengths: Each note's strength, keyed by its kind and note, in the dictionary's order.
@@ -53,31 +53,37 @@ class NoteStrengths:
 
 @dataclass(frozen=True)
 class HeardAtoms:
-    """A note dictionary's atoms as a frame heard alone hears them, each on the channel its note is heard on.
+    """A note dictionary's atoms as one frame hears them, each on the channel its note is heard on.
 
     A level of one sounds an atom's unit row on its channel, at the drive the stem gives the
-    channel, and a frame heard alone reads it there as the row's power at the drive
-    (``FrameHearing.unit_features``). An atom's cap is what every channel of its kind playing it at
+    channel, and the frame's hearing reads what it adds there (``FrameHearing.unit_features``): heard
+    alone, the row's power at the drive; among the frame's neighbors, its own share of the window,
+    joined with the note it extends. An atom's cap is what every channel of its kind playing it at
     full volume sounds, as a level of the atom on its channel: its full level times the channel's
     ``StemLayout.gain``. The caps and the powers move with the atoms, so the most a note sounds is
     what the stem's channels play at every drive.
 
-    An atom's power is its unit row's power heard alone on its channel
-    (``FrameHearing.steady_powers``), so a note's strength is the power its fitted level sounds the
-    note at, heard alone. The power sums the row's power densities over the bins, the form the
-    catalog holds a row's power in. The proposal counts (``PROPOSED_NOTES``) and the triangle run's
-    shares (``level.reading``) were tuned on strengths read in densities. A density weighs a partial
-    by its bin's width, so where the bins widen with frequency, as under ``cqt`` and above about
-    500 Hz under ``logfft``, a note's low partials weigh more than its high ones. Under ``fft`` every
-    bin is as wide, and the densities rank the notes as their bin powers do.
+    An atom's power is what its unit row adds to the frame's reading (``FrameHearing.unit_powers``),
+    so a note's strength is the power its fitted level adds: the part of the reading the frame's
+    choice decides, which the frame loses where it leaves the note out. A note held beside the frame
+    counts what joining it adds, the leak's part of it staying whatever the frame plays, so a held
+    note and a note of the frame's own rank by the same measure. Heard alone, a row adds its whole
+    power.
+
+    The power sums the row's power densities over the bins, the form the catalog holds a row's power
+    in. The proposal counts (``PROPOSED_NOTES``) and the triangle run's shares (``level.reading``)
+    were tuned on strengths read in densities. A density weighs a partial by its bin's width, so
+    where the bins widen with frequency, as under ``cqt`` and above about 500 Hz under ``logfft``, a
+    note's low partials weigh more than its high ones. Under ``fft`` every bin is as wide, and the
+    densities rank the notes as their bin powers do.
 
     Attributes:
         kinds: Each atom's kind.
         notes: Each atom's note.
-        features: Each atom's feature values heard alone at a level of one, one per row.
+        features: The feature values of what each atom adds to the frame at a level of one, one per row.
         caps: The highest level each atom may reach.
-        powers: Each atom's whole power heard alone on its channel, which a fitted note's strength is
-            read in.
+        powers: The whole power each atom adds to the frame at a level of one, which a fitted note's
+            strength is read in.
     """
 
     kinds: Tuple[GeneratorClassName, ...]
@@ -101,9 +107,9 @@ class NoteDictionary:
     """One atom per note and timbre a stem's channels may sound, which a frame's levels are fitted over.
 
     An atom is the unit row of its note in its timbre, so a level of one sounds that row. The
-    dictionary holds the atoms' rows, and a frame heard alone hears them (``heard``): a row's sound
-    belongs to the row on a channel. The atoms stand kind by kind in name order, each kind's notes
-    ascending and each note's timbres ascending.
+    dictionary holds the atoms' rows, and each frame hears them through its hearing (``heard``), as
+    every step of the joint assignment hears a row. The atoms stand kind by kind in name order, each
+    kind's notes ascending and each note's timbres ascending.
 
     Attributes:
         layout: The stem's channels.
@@ -146,8 +152,8 @@ class NoteDictionary:
             full_levels=np.array(full_levels, dtype=np.float64),
         )
 
-    def heard(self, hearing: SteadyHearing) -> HeardAtoms:
-        """The atoms as a frame heard alone hears them, each on the channel it hears its note's proposal on.
+    def heard(self, hearing: FrameHearing) -> HeardAtoms:
+        """The atoms as ``hearing`` hears its frame, each on the channel it hears its note's proposal on.
 
         The atoms span the frame's bins at every count of atoms, so a dictionary of no atom is heard
         as no atom over the bins.
@@ -162,7 +168,7 @@ class NoteDictionary:
                 rows = [int(row) for row in self.rows[placed]]
                 features[placed] = hearing.unit_features(place, rows)
                 caps[placed] = self.full_levels[placed] * self.layout.gain(place)
-                powers[placed] = [float(power.sum()) for power in hearing.steady_powers(place, rows)]
+                powers[placed] = [float(power.sum()) for power in hearing.unit_powers(place, rows)]
 
         return HeardAtoms(kinds=self.kinds, notes=self.notes, features=features, caps=caps, powers=powers)
 
@@ -208,12 +214,9 @@ class NoteTrials:
 def note_strengths(target: FitTarget, atoms: HeardAtoms, hearing: FrameHearing) -> NoteStrengths:
     """How strongly the frame sounds each note, every note fitted to it at once.
 
-    The atoms are heard as a frame heard alone hears them (``NoteDictionary.heard``): each row at its
-    channel's drive, as a note held through the whole window. They are fitted over what the frame
-    holds before its rows sound, the leak of ``hearing``, from ``FREE_FIT_START`` for
-    ``FREE_FIT_UPDATES`` updates. Among the frame's neighbors the fit hears each row alone as well,
-    since the window model reads a note cut at a frame boundary approximately, and the fit weighs
-    every note of the frame through what it reads.
+    The atoms, heard as ``hearing`` hears the frame (``NoteDictionary.heard``), are fitted over what
+    the frame holds before its rows sound, its leak, from ``FREE_FIT_START`` for ``FREE_FIT_UPDATES``
+    updates. A note's strength is the power its fitted level adds to the frame's reading.
     """
     levels = fitted_levels(
         target,
@@ -237,12 +240,12 @@ def proposed_rows(
 ) -> Dict[GeneratorClassName, List[int]]:
     """The rows a frame's search starts from: each kind's strongest notes, each on its best row alone.
 
-    Every note is fitted to the frame at once, its ``atoms`` heard alone over what ``hearing`` holds
-    before its rows sound (``note_strengths``), and each kind proposes its ``PROPOSED_NOTES``
-    strongest notes. A note is proposed on the row of its own, of any timbre and volume, that fits
-    the frame best alone, which settles its duty cycle and a first volume. A row alone leaves the
-    frame's other notes uncovered, so the bins it falls short in count at ``SHORTFALL_WEIGHT`` of
-    their cost, and what it adds beyond the frame counts in full.
+    Every note is fitted to the frame at once, its ``atoms`` heard as ``hearing`` hears the frame
+    (``note_strengths``), and each kind proposes its ``PROPOSED_NOTES`` strongest notes. A note is
+    proposed on the row of its own, of any timbre and volume, that fits the frame best alone, which
+    settles its duty cycle and a first volume. A row alone leaves the frame's other notes uncovered,
+    so the bins it falls short in count at ``SHORTFALL_WEIGHT`` of their cost, and what it adds
+    beyond the frame counts in full.
 
     Where the stem holds two pulses, its ``DOUBLED_NOTES`` strongest pulse notes are proposed again,
     each on the best row of a duty cycle sounding unlike its first, so two pulses may sound one note.
