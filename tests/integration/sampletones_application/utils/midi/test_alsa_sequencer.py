@@ -18,6 +18,9 @@ SETTLED_SECONDS: Final[float] = 0.1
 STALE_NOTE: Final[int] = 59
 PLAYED_NOTE: Final[int] = 60
 VELOCITY: Final[int] = 100
+SEQUENCER_GROUP: Final[str] = "alsa-sequencer"
+
+pytestmark = pytest.mark.xdist_group(SEQUENCER_GROUP)
 
 
 class Keyboard:
