@@ -261,7 +261,9 @@ refused before the run starts. The packaged sets:
 - `joint-logfft`, `joint-fitted-combinations-logfft`, `joint-fitted-combinations-neighbors1-logfft`: the
   joint assignment, the fitted level with whole combinations, and the pass, each reading every frame
   with `logfft` beside the library's own method, at equal weight
-  ([several methods at once](../concepts/reconstruction.md#32-spectrum-methods-fft-log-fft-and-cqt)).
+  ([several methods at once](../concepts/reconstruction.md#32-spectrum-methods-fft-log-fft-and-cqt));
+  `joint-fitted-combinations-logfft05` and `joint-fitted-combinations-neighbors1-logfft05` read `logfft` at
+  half the library method's weight.
 
 `--levels true` matches every sound at the level its file holds, whatever working level its settings
 name, the fitted one included. For a sound written as NES frames that is the level the channels play

@@ -137,3 +137,24 @@ settings:
         selector: combinations
       layers:
         - {method: logfft, weight: 1.0}
+  joint-fitted-combinations-logfft05:
+    general:
+      level: fitted
+    generation:
+      assignment:
+        method: joint
+      decoder:
+        selector: combinations
+      layers:
+        - {method: logfft, weight: 0.5}
+  joint-fitted-combinations-neighbors1-logfft05:
+    general:
+      level: fitted
+    generation:
+      assignment:
+        method: joint
+        neighbors: 1
+      decoder:
+        selector: combinations
+      layers:
+        - {method: logfft, weight: 0.5}
