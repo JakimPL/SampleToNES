@@ -1,4 +1,4 @@
-from typing import Dict, Tuple
+from typing import Dict, Optional, Tuple
 
 from pydantic import BaseModel, ConfigDict
 
@@ -29,6 +29,8 @@ class BoardCell(BaseModel):
         score: The headline referee's distance between the render and its recording.
         silence: What the same referee scores complete silence at, the distance a render closes.
         channels: The channels the render sounds, in the order the hardware holds them.
+        spread: The lowest and the highest score among the renders the score is the mean of, for
+            the oracle's cell; ``None`` for a cell of one render.
     """
 
     model_config = ConfigDict(frozen=True, extra="forbid")
@@ -37,6 +39,7 @@ class BoardCell(BaseModel):
     score: float
     silence: float
     channels: Tuple[BoardChannel, ...]
+    spread: Optional[Tuple[float, float]]
 
 
 class BoardRecording(BaseModel):
@@ -62,7 +65,8 @@ class BoardRow(BaseModel):
         category: The corpus category the item belongs to.
         recordings: One recording per level the cells were matched at, in the order the columns first
             reach each level, so every cell plays beside the recording at its own level.
-        cells: One cell per column, in the columns' order.
+        cells: One cell per column, in the columns' order; ``None`` under the oracle's column for a
+            sound written otherwise than as NES frames.
     """
 
     model_config = ConfigDict(frozen=True, extra="forbid")
@@ -71,7 +75,7 @@ class BoardRow(BaseModel):
     family: str
     category: str
     recordings: Tuple[BoardRecording, ...]
-    cells: Tuple[BoardCell, ...]
+    cells: Tuple[Optional[BoardCell], ...]
 
 
 class BoardColumn(BaseModel):
@@ -82,12 +86,15 @@ class BoardColumn(BaseModel):
         words: The words of the name past the prefix every column of the group shares, one per line
             of the heading. A column named by the prefix alone holds none, as the base configuration
             the other columns add to.
+        oracle: Whether the column holds the oracle, what playing each sound's frames exactly
+            scores, which stands beside the conversions and outside the change across them.
     """
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     name: str
     words: Tuple[str, ...]
+    oracle: bool
 
 
 class BoardFamily(BaseModel):

@@ -19,13 +19,13 @@ PREFIX: Tuple[str, str] = (f"const {DATA_GLOBAL} = ", ";")
 
 def page() -> BoardPage:
     channel = BoardChannel(name="noise", timeline="1100", solo="a.flac", mute="b.flac")
-    cell = BoardCell(render="renders/cqt-pe1/tone-a.flac", score=9.5, silence=20.0, channels=(channel,))
+    cell = BoardCell(render="renders/cqt-pe1/tone-a.flac", score=9.5, silence=20.0, channels=(channel,), spread=None)
     recording = BoardRecording(level="default", clip="recordings/tone-a.flac")
     row = BoardRow(item="tone-a", family="sines", category="tone", recordings=(recording,), cells=(cell,))
     group = BoardGroup(
         name="run-a",
         prefix="",
-        columns=(BoardColumn(name="cqt-pe1", words=("cqt", "pe1")),),
+        columns=(BoardColumn(name="cqt-pe1", words=("cqt", "pe1"), oracle=False),),
         families=(BoardFamily(name="sines", channels=("noise",)),),
         rows=(row,),
     )

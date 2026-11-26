@@ -5,13 +5,14 @@ from sampletones_core.constants.enums import ChannelName, ordered_channels
 from sampletones_shared.paths.extensions import EXT_FILE_FLAC
 from sampletones_shared.utils.system.paths import get_filename
 from sampletones_tools.calibration.config.level import VariantLevel
-from sampletones_tools.calibration.layout import combination_name
+from sampletones_tools.calibration.layout import ORACLE_LABEL, combination_name
+from sampletones_tools.calibration.oracle.reading import HIGHEST_READING, LOWEST_READING
 from sampletones_tools.calibration.renders import RenderRecord, item_directory, recording_path, variant_directory
 from sampletones_tools.calibration.variants import LABEL_SEPARATOR
 from sampletones_tools.web.roles.table import channel_role
 
 from .clips import ClipStore
-from .headings import heading_column, shared_words
+from .headings import heading_column, oracle_column, shared_words
 from .model import (
     BoardCell,
     BoardChannel,
@@ -36,9 +37,10 @@ def compose_page(
     """
     Assemble everything a page draws from the runs it reports.
 
-    One run is read across its variants, which become the columns of a single table. Several runs
-    are read against each other, so each variant becomes a table of its own and the runs stand as
-    its columns — the comparison a person makes when they run the same settings on two versions.
+    One run is read across its variants, which become the columns of a single table, the oracle's
+    first where the run read it. Several runs are read against each other, so each variant becomes a
+    table of its own and the runs stand as its columns — the comparison a person makes when they run
+    the same settings on two versions.
 
     Args:
         runs: The runs the page reports, in the order the page holds them.
@@ -66,10 +68,15 @@ def compose_page(
 
 
 def _column_group(run: RunReading, store: ClipStore) -> Tuple[BoardGroup, ...]:
-    """One table whose columns are the configurations the run measured."""
+    """One table whose columns are the configurations the run measured, after the oracle where the run read it.
+
+    The oracle reads only the sounds written as NES frames, so a row of another sound leaves its
+    oracle cell empty.
+    """
     variants = run.variants
-    rows = _rows(store, _items(run), [(run, variant) for variant in variants])
-    return (_group(run.label, variants, rows),)
+    oracle = run if run.holds_oracle else None
+    rows = _rows(store, _items(run), [(run, variant) for variant in variants], oracle)
+    return (_group(run.label, variants, rows, oracle=oracle is not None),)
 
 
 def _variant_groups(runs: Sequence[RunReading], store: ClipStore) -> Tuple[BoardGroup, ...]:
@@ -77,19 +84,23 @@ def _variant_groups(runs: Sequence[RunReading], store: ClipStore) -> Tuple[Board
     groups: List[BoardGroup] = []
     for variant in _shared_variants(runs):
         holders = [run for run in runs if variant in run.variants]
-        rows = _rows(store, _shared_items(holders), [(run, variant) for run in holders])
-        groups.append(_group(variant, [run.label for run in holders], rows))
+        rows = _rows(store, _shared_items(holders), [(run, variant) for run in holders], None)
+        groups.append(_group(variant, [run.label for run in holders], rows, oracle=False))
 
     return tuple(groups)
 
 
-def _group(name: str, columns: Sequence[str], rows: Tuple[BoardRow, ...]) -> BoardGroup:
-    """A tab of these columns and rows, each heading naming what its column adds to the words they share."""
+def _group(name: str, columns: Sequence[str], rows: Tuple[BoardRow, ...], *, oracle: bool) -> BoardGroup:
+    """A tab of these columns and rows, each heading naming what its column adds to the words they share.
+
+    The oracle's column, where the group holds it, stands first and outside the shared words.
+    """
     prefix = shared_words(columns)
+    headed = tuple(heading_column(column, prefix) for column in columns)
     return BoardGroup(
         name=name,
         prefix=LABEL_SEPARATOR.join(prefix),
-        columns=tuple(heading_column(column, prefix) for column in columns),
+        columns=(oracle_column(), *headed) if oracle else headed,
         families=_families(rows),
         rows=rows,
     )
@@ -100,7 +111,9 @@ def _families(rows: Sequence[BoardRow]) -> Tuple[BoardFamily, ...]:
     sounding: Dict[str, Set[ChannelName]] = {}
     for row in rows:
         channels = sounding.setdefault(row.family, set())
-        channels.update(ChannelName(channel.name) for cell in row.cells for channel in cell.channels)
+        channels.update(
+            ChannelName(channel.name) for cell in row.cells if cell is not None for channel in cell.channels
+        )
 
     return tuple(
         BoardFamily(name=family, channels=tuple(channel.value for channel in ordered_channels(channels)))
@@ -112,9 +125,14 @@ def _rows(
     store: ClipStore,
     items: Sequence[str],
     places: Sequence[Tuple[RunReading, str]],
+    oracle: Optional[RunReading],
 ) -> Tuple[BoardRow, ...]:
-    """A row per item every column holds a render of, so each row reads across the whole table."""
-    rows = [_row(store, item, places) for item in items]
+    """A row per item every column holds a render of, so each row reads across the whole table.
+
+    Where ``oracle`` names a run, each row leads with that run's oracle cell of the item, empty where
+    the run read no oracle of it.
+    """
+    rows = [_row(store, item, places, oracle) for item in items]
     return tuple(row for row in rows if row is not None)
 
 
@@ -122,18 +140,25 @@ def _row(
     store: ClipStore,
     item: str,
     places: Sequence[Tuple[RunReading, str]],
+    oracle: Optional[RunReading],
 ) -> Optional[BoardRow]:
     records = [(run, _record(run, item, variant)) for run, variant in places]
     held = [(run, record) for run, record in records if record is not None]
     if len(held) != len(records):
         return None
 
+    cells: Tuple[Optional[BoardCell], ...] = tuple(_cell(run, store, record) for run, record in held)
+    if oracle is not None:
+        read = _record(oracle, item, ORACLE_LABEL)
+        cells = (None if read is None else _cell(oracle, store, read), *cells)
+        held = [(oracle, read), *held] if read is not None else held
+
     return BoardRow(
         item=item,
         family=held[0][1].family,
         category=held[0][1].category,
         recordings=_recordings(store, item, held),
-        cells=tuple(_cell(run, store, record) for run, record in held),
+        cells=cells,
     )
 
 
@@ -160,7 +185,17 @@ def _cell(run: RunReading, store: ClipStore, record: RenderRecord) -> BoardCell:
         score=run.score(record),
         silence=run.silence(record),
         channels=tuple(_channel(run, store, record, channel, channels) for channel in channels),
+        spread=_spread(run, record),
     )
+
+
+def _spread(run: RunReading, record: RenderRecord) -> Optional[Tuple[float, float]]:
+    """The lowest and highest headline score of the renders a record's score is the mean of, where it keeps them."""
+    readings = record.judgments[run.referee]
+    if LOWEST_READING not in readings or HIGHEST_READING not in readings:
+        return None
+
+    return readings[LOWEST_READING], readings[HIGHEST_READING]
 
 
 def _channel(

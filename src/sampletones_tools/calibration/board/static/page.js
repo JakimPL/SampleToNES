@@ -13,6 +13,8 @@ const MESSAGES = {
   silent: "—",
   exact: "exact",
   closed: (nats) => `${nats} nats`,
+  spread: (lowest, highest) => `From ${lowest} to ${highest} over the starts the run drew`,
+  unread: "—",
   openAll: "Open all",
   closeAll: "Close all",
 };
@@ -196,11 +198,18 @@ function playNode(cell, glyph) {
   return render;
 }
 
-/** A render's score over how far it stands from silence. */
+/**
+ * A render's score over how far it stands from silence. A score that is the mean of several
+ * renders, as the oracle's is, names their closest and farthest in its tooltip.
+ */
 function readingNode(cell) {
   const reading = element("div", "reading");
   reading.append(element("b", null, rounded(closeness(cell))));
   reading.append(element("span", null, fromSilence(cell)));
+  if (cell.spread) {
+    const [lowest, highest] = cell.spread;
+    reading.title = MESSAGES.spread(rounded(-highest), rounded(-lowest));
+  }
   return reading;
 }
 
@@ -215,14 +224,16 @@ function cellNode(cell, channels, board) {
 }
 
 /**
- * The change of the turned score from the first column to the last, so a rise means the last
- * column is closer to the recording. A change rounding to zero is marked neither better nor worse,
- * and a row of one column leaves the cell empty.
+ * The change of the turned score from the first conversion's column to the last, so a rise means
+ * the last column is closer to the recording. The oracle's column stands outside it. A change
+ * rounding to zero is marked neither better nor worse, and a row of one conversion leaves the cell
+ * empty.
  */
-function changeNode(row) {
+function changeNode(row, columns) {
   const node = element("td", "change");
-  if (row.cells.length < CHANGE_COLUMNS) { return node; }
-  const change = closeness(row.cells[row.cells.length - 1]) - closeness(row.cells[0]);
+  const cells = row.cells.filter((cell, place) => !columns[place].oracle);
+  if (cells.length < CHANGE_COLUMNS) { return node; }
+  const change = closeness(cells[cells.length - 1]) - closeness(cells[0]);
   const shown = rounded(change);
   if (Number(shown) !== 0) { node.classList.add(change > 0 ? "better" : "worse"); }
   node.textContent = `${Number(shown) >= 0 ? "+" : ""}${shown}`;
@@ -242,19 +253,27 @@ function recordingsNode(row) {
   return node;
 }
 
-/** One sound across the table: its name, its recordings, a cell per version and the change. */
-function rowNode(row, channels, board) {
+/** The class a version's heading and cells carry, the oracle's column marked apart. */
+function versionClass(column) {
+  return column.oracle ? "version oracle" : "version";
+}
+
+/**
+ * One sound across the table: its name, its recordings, a cell per version and the change. A
+ * sound the oracle reads no frames of leaves the oracle's cell holding a dash.
+ */
+function rowNode(row, columns, channels, board) {
   const node = element("tr", "sound-row");
   const sound = element("td", "sound");
   sound.append(breakable(row.item));
   node.append(sound);
   node.append(recordingsNode(row));
   row.cells.forEach((cell, place) => {
-    const holder = inColumn(element("td", "version"), place);
-    holder.append(cellNode(cell, channels, board));
+    const holder = inColumn(element("td", versionClass(columns[place])), place);
+    holder.append(cell ? cellNode(cell, channels, board) : element("span", "unread", MESSAGES.unread));
     node.append(holder);
   });
-  node.append(changeNode(row));
+  node.append(changeNode(row, columns));
   return node;
 }
 
@@ -325,7 +344,7 @@ function headingWords(column) {
  * name stays in the tooltip.
  */
 function versionHeading(column, place, glyphs) {
-  const heading = inColumn(element("th", "version"), place);
+  const heading = inColumn(element("th", versionClass(column)), place);
   heading.title = column.name;
   const toggle = element("button", "column-toggle");
   toggle.setAttribute("aria-expanded", "false");
@@ -353,13 +372,13 @@ function headNode(layout, glyphs) {
 }
 
 /** The sound rows, a category heading opening each stretch of rows of one category. */
-function bodyNode(rows, channels, span, board) {
+function bodyNode(rows, columns, channels, span, board) {
   const body = element("tbody");
   let category = null;
   for (const row of rows) {
     if (row.category !== category) { body.append(categoryNode(row.category, span)); }
     category = row.category;
-    body.append(rowNode(row, channels, board));
+    body.append(rowNode(row, columns, channels, board));
   }
   return body;
 }
@@ -375,7 +394,7 @@ function tableNode(columns, family, rows, board) {
   table.append(
     widthsNode(layout),
     headNode(layout, board.glyphs),
-    bodyNode(rows, family.channels, layout.length, board),
+    bodyNode(rows, columns, family.channels, layout.length, board),
   );
   return table;
 }

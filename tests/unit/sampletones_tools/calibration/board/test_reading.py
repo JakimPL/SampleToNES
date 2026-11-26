@@ -6,10 +6,12 @@ import pytest
 from sampletones_tools.calibration.board.reading import read_run, read_runs
 from sampletones_tools.calibration.config.level import VariantLevel
 from sampletones_tools.calibration.fingerprint import FINGERPRINT_FILE, write_fingerprint
+from sampletones_tools.calibration.layout import ORACLE_LABEL
 from tests.unit.sampletones_tools.calibration.runs import (
     REFEREE,
     SILENCE_SCORE,
     probe_fingerprint,
+    write_oracle,
     write_renders,
     write_run,
 )
@@ -35,6 +37,18 @@ class TestReadRun:
         assert reading.referee == REFEREE
         assert reading.silence(reading.records[0]) == SILENCE_SCORE
         assert reading.score(reading.records[0]) == 10.0
+
+    def test_the_oracle_is_read_beside_the_variants_the_run_measured(self, run: Path) -> None:
+        write_oracle(run, ["tone-a"])
+
+        reading = read_run(run, "run-a")
+
+        assert reading.holds_oracle
+        assert reading.variants == ("cqt-pe1", "fft-pe1")
+        assert [record.item for record in reading.records if record.variant == ORACLE_LABEL] == ["tone-a"]
+
+    def test_a_run_holds_no_oracle_until_one_is_read(self, run: Path) -> None:
+        assert not read_run(run, "run-a").holds_oracle
 
     def test_a_directory_without_renders_is_reported(self, tmp_path: Path) -> None:
         with pytest.raises(FileNotFoundError, match="holds no calibration renders"):

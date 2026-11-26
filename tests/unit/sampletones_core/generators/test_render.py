@@ -5,7 +5,8 @@ import pytest
 
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import ChannelName
-from sampletones_core.generators.render import render_channels, render_instructions
+from sampletones_core.generators import PulseGenerator
+from sampletones_core.generators.render import render_channels, render_instructions, render_on
 from sampletones_core.instructions import (
     InstructionUnion,
     NoiseInstruction,
@@ -58,6 +59,29 @@ class TestRenderInstructions:
     def test_a_channel_describing_no_frame_raises(self, config: Config) -> None:
         with pytest.raises(ValueError):
             render_instructions([], ChannelName.PULSE1, config)
+
+
+class TestRenderOn:
+    """One channel's audio rendered on a given generator, from where its oscillator stands."""
+
+    def test_a_fresh_generator_renders_as_the_channel_does(
+        self, pulse_stream: List[InstructionUnion], config: Config
+    ) -> None:
+        generator = PulseGenerator(config, ChannelName.PULSE1.value)
+
+        assert np.array_equal(
+            render_on(generator, pulse_stream), render_instructions(pulse_stream, ChannelName.PULSE1, config)
+        )
+
+    def test_an_oscillator_standing_elsewhere_starts_the_frames_there(
+        self, pulse_stream: List[InstructionUnion], config: Config
+    ) -> None:
+        generator = PulseGenerator(config, ChannelName.PULSE1.value)
+        generator.timer.phase = 0.5
+
+        rendered = render_on(generator, pulse_stream)
+
+        assert not np.array_equal(rendered, render_instructions(pulse_stream, ChannelName.PULSE1, config))
 
 
 class TestRenderGenerators:

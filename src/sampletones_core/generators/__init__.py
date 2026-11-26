@@ -12,7 +12,7 @@ from .maps import (
     INSTRUCTION_TO_GENERATOR_MAP,
     MIXER_LEVELS,
 )
-from .render import render_channels, render_instructions
+from .render import render_channels, render_instructions, render_on
 from .tonal import TonalGenerator
 from .types import (
     GeneratorClass,
@@ -51,4 +51,5 @@ __all__ = [
     "get_generators_map",
     "render_channels",
     "render_instructions",
+    "render_on",
 ]

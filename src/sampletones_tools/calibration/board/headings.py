@@ -1,6 +1,7 @@
 from itertools import takewhile
 from typing import Final, Sequence, Tuple
 
+from sampletones_tools.calibration.layout import ORACLE_LABEL
 from sampletones_tools.calibration.variants import LABEL_SEPARATOR
 
 from .model import BoardColumn
@@ -31,7 +32,12 @@ def shared_words(names: Sequence[str]) -> Tuple[str, ...]:
 
 def heading_column(name: str, prefix: Sequence[str]) -> BoardColumn:
     """The column called ``name``, its heading holding the words of the name past ``prefix``."""
-    return BoardColumn(name=name, words=tuple(name.split(LABEL_SEPARATOR)[len(prefix) :]))
+    return BoardColumn(name=name, words=tuple(name.split(LABEL_SEPARATOR)[len(prefix) :]), oracle=False)
+
+
+def oracle_column() -> BoardColumn:
+    """The oracle's column, its heading naming it whole."""
+    return BoardColumn(name=ORACLE_LABEL, words=(ORACLE_LABEL,), oracle=True)
 
 
 def _alike(words: Tuple[str, ...]) -> bool:

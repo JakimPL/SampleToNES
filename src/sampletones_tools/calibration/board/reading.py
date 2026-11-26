@@ -5,7 +5,7 @@ from pydantic import BaseModel, ConfigDict
 
 from sampletones_shared.paths.extensions import EXT_FILE_JSON
 from sampletones_tools.calibration.fingerprint import measured_variants
-from sampletones_tools.calibration.layout import RENDERS_DIRECTORY
+from sampletones_tools.calibration.layout import ORACLE_LABEL, RENDERS_DIRECTORY
 from sampletones_tools.calibration.referee.protocol import SCORE_READING
 from sampletones_tools.calibration.renders import RenderRecord
 
@@ -17,8 +17,8 @@ class RunReading(BaseModel):
         label: The name the page calls the run by, which is unique among the runs it holds.
         directory: The run directory every reference the page makes resolves against.
         measured: The labels of the variants the run measured, in the order it measured them.
-        records: Every render the run wrote under the variants it measured, in the order the corpus
-            generates its items.
+        records: Every render the run wrote under the variants it measured and the oracle's, in the
+            order the corpus generates its items.
     """
 
     model_config = ConfigDict(frozen=True, extra="forbid")
@@ -37,6 +37,11 @@ class RunReading(BaseModel):
         """
         recorded = {record.variant for record in self.records}
         return tuple(variant for variant in self.measured if variant in recorded)
+
+    @property
+    def holds_oracle(self) -> bool:
+        """Whether the run read the oracle of any sound, which the page then shows beside the variants."""
+        return any(record.variant == ORACLE_LABEL for record in self.records)
 
     @property
     def referee(self) -> str:
@@ -67,7 +72,7 @@ def read_run(directory: Path, label: str) -> RunReading:
     The records carry the scores, the categories and the frames each channel sounded, so a page is
     assembled from a finished run without repeating any measurement. The fingerprint lists the
     variants in the order the run measured them, which the page's columns follow, and the records of
-    those variants alone are read.
+    those variants and of the oracle alone are read.
 
     Args:
         directory: The run directory, the one holding ``renders`` and the fingerprint.
@@ -86,7 +91,7 @@ def read_run(directory: Path, label: str) -> RunReading:
 
     measured = measured_variants(directory)
     records = [RenderRecord.model_validate_json(path.read_text(encoding="utf-8")) for path in paths]
-    held = [record for record in records if record.variant in measured]
+    held = [record for record in records if record.variant in measured or record.variant == ORACLE_LABEL]
     held.sort(key=lambda record: (record.position, record.variant))
     return RunReading(label=label, directory=directory, measured=measured, records=tuple(held))
 
